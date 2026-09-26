@@ -1,0 +1,440 @@
+{
+ "state": "CO",
+ "year": 2022,
+ "seed": 20261001,
+ "tabpfn_model_version": "v2",
+ "timing_s": 21.6,
+ "load_options": {
+  "income_var": "WAGP",
+  "fulltime": true
+ },
+ "spec_results": [
+  {
+   "outcome_def": "acs50k",
+   "covariate_set": "premarket",
+   "learner": "logistic",
+   "n": 21261,
+   "n_female": 9260,
+   "n_male": 12001,
+   "powered": true,
+   "delta_label": -0.11591356260730645,
+   "delta_merit": 0.028913005789046875,
+   "R": 0.14482656839635333,
+   "decomp_raw_logpts": -0.22282534314316216,
+   "decomp_explained": 0.0379760735017616,
+   "decomp_unexplained": -0.26080141664492373,
+   "eiv_unexplained_at_kappa": -0.4359718989163579,
+   "kappa_point": 0.186729281562411,
+   "kappa_sweep": [
+    {
+     "kappa": 0.15,
+     "unexplained": -0.49055893402565465
+    },
+    {
+     "kappa": 0.2,
+     "unexplained": -0.4213304422596654
+    },
+    {
+     "kappa": 0.25,
+     "unexplained": -0.38046650082588207
+    },
+    {
+     "kappa": 0.3,
+     "unexplained": -0.3534986949415361
+    },
+    {
+     "kappa": 0.35,
+     "unexplained": -0.3343688421623515
+    },
+    {
+     "kappa": 0.4,
+     "unexplained": -0.3200934571250911
+    },
+    {
+     "kappa": 0.45,
+     "unexplained": -0.3090327641884655
+    },
+    {
+     "kappa": 0.5,
+     "unexplained": -0.3002107745337161
+    },
+    {
+     "kappa": 0.55,
+     "unexplained": -0.29301027460890955
+    },
+    {
+     "kappa": 0.6,
+     "unexplained": -0.28702184345384074
+    },
+    {
+     "kappa": 0.65,
+     "unexplained": -0.2819631962585743
+    },
+    {
+     "kappa": 0.7,
+     "unexplained": -0.27763339045588753
+    },
+    {
+     "kappa": 0.75,
+     "unexplained": -0.2738854954376376
+    },
+    {
+     "kappa": 0.8,
+     "unexplained": -0.2706095877041799
+    },
+    {
+     "kappa": 0.85,
+     "unexplained": -0.2677217899125533
+    },
+    {
+     "kappa": 0.9,
+     "unexplained": -0.26515698782100017
+    },
+    {
+     "kappa": 0.95,
+     "unexplained": -0.26286386159970127
+    },
+    {
+     "kappa": 1.0,
+     "unexplained": -0.2608014166449241
+    }
+   ],
+   "eiv_unexplained_at": {
+    "0.186729": -0.4359718989163579,
+    "0.242578": -0.38544113132006536
+   },
+   "n_covariate_columns": 2,
+   "dml_theta_logpts": -0.2861939157829554,
+   "dml_se": 0.008924449671336205,
+   "dml_nuisance": "xgboost",
+   "boot": {
+    "lo": 0.13002442550419704,
+    "hi": 0.16208280185308818,
+    "n_boot": 500,
+    "stat": "R",
+    "learner_in_boot": "logistic"
+   }
+  },
+  {
+   "outcome_def": "acs50k",
+   "covariate_set": "extended",
+   "learner": "logistic",
+   "n": 21261,
+   "n_female": 9260,
+   "n_male": 12001,
+   "powered": true,
+   "delta_label": -0.11591356260730645,
+   "delta_merit": 0.0022219101214744352,
+   "R": 0.11813547272878089,
+   "decomp_raw_logpts": -0.22282534314316216,
+   "decomp_explained": 0.0006390779583585097,
+   "decomp_unexplained": -0.22346442110152068,
+   "eiv_unexplained_at_kappa": -0.3866060206612123,
+   "kappa_point": 0.186729281562411,
+   "kappa_sweep": [
+    {
+     "kappa": 0.15,
+     "unexplained": -0.447402221614454
+    },
+    {
+     "kappa": 0.2,
+     "unexplained": -0.3712078814957753
+    },
+    {
+     "kappa": 0.25,
+     "unexplained": -0.3300911179925182
+    },
+    {
+     "kappa": 0.3,
+     "unexplained": -0.3043614054303415
+    },
+    {
+     "kappa": 0.35,
+     "unexplained": -0.28674277776885254
+    },
+    {
+     "kappa": 0.4,
+     "unexplained": -0.27392203364859447
+    },
+    {
+     "kappa": 0.45,
+     "unexplained": -0.26417421191332224
+    },
+    {
+     "kappa": 0.5,
+     "unexplained": -0.2565127502295124
+    },
+    {
+     "kappa": 0.55,
+     "unexplained": -0.2503325752646685
+    },
+    {
+     "kappa": 0.6,
+     "unexplained": -0.2452419619095805
+    },
+    {
+     "kappa": 0.65,
+     "unexplained": -0.24097611782759126
+    },
+    {
+     "kappa": 0.7,
+     "unexplained": -0.23734962290182585
+    },
+    {
+     "kappa": 0.75,
+     "unexplained": -0.23422876248388882
+    },
+    {
+     "kappa": 0.8,
+     "unexplained": -0.23151467900174225
+    },
+    {
+     "kappa": 0.85,
+     "unexplained": -0.2291327086074732
+    },
+    {
+     "kappa": 0.9,
+     "unexplained": -0.2270254066444987
+    },
+    {
+     "kappa": 0.95,
+     "unexplained": -0.2251478543204348
+    },
+    {
+     "kappa": 1.0,
+     "unexplained": -0.22346442110152048
+    }
+   ],
+   "eiv_unexplained_at": {
+    "0.186729": -0.3866060206612123,
+    "0.242578": -0.33495597783589864
+   },
+   "n_covariate_columns": 10,
+   "dml_theta_logpts": -0.22026742100493435,
+   "dml_se": 0.008853590395663552,
+   "dml_nuisance": "xgboost",
+   "boot": null
+  },
+  {
+   "outcome_def": "cellmedian",
+   "covariate_set": "premarket",
+   "learner": "logistic",
+   "n": 21261,
+   "n_female": 9260,
+   "n_male": 12001,
+   "powered": true,
+   "delta_label": -0.13137808969736847,
+   "delta_merit": 0.030503840559684026,
+   "R": 0.1618819302570525,
+   "decomp_raw_logpts": -0.22282534314316216,
+   "decomp_explained": 0.0379760735017616,
+   "decomp_unexplained": -0.26080141664492373,
+   "eiv_unexplained_at_kappa": -0.4359718989163579,
+   "kappa_point": 0.186729281562411,
+   "kappa_sweep": [
+    {
+     "kappa": 0.15,
+     "unexplained": -0.49055893402565465
+    },
+    {
+     "kappa": 0.2,
+     "unexplained": -0.4213304422596654
+    },
+    {
+     "kappa": 0.25,
+     "unexplained": -0.38046650082588207
+    },
+    {
+     "kappa": 0.3,
+     "unexplained": -0.3534986949415361
+    },
+    {
+     "kappa": 0.35,
+     "unexplained": -0.3343688421623515
+    },
+    {
+     "kappa": 0.4,
+     "unexplained": -0.3200934571250911
+    },
+    {
+     "kappa": 0.45,
+     "unexplained": -0.3090327641884655
+    },
+    {
+     "kappa": 0.5,
+     "unexplained": -0.3002107745337161
+    },
+    {
+     "kappa": 0.55,
+     "unexplained": -0.29301027460890955
+    },
+    {
+     "kappa": 0.6,
+     "unexplained": -0.28702184345384074
+    },
+    {
+     "kappa": 0.65,
+     "unexplained": -0.2819631962585743
+    },
+    {
+     "kappa": 0.7,
+     "unexplained": -0.27763339045588753
+    },
+    {
+     "kappa": 0.75,
+     "unexplained": -0.2738854954376376
+    },
+    {
+     "kappa": 0.8,
+     "unexplained": -0.2706095877041799
+    },
+    {
+     "kappa": 0.85,
+     "unexplained": -0.2677217899125533
+    },
+    {
+     "kappa": 0.9,
+     "unexplained": -0.26515698782100017
+    },
+    {
+     "kappa": 0.95,
+     "unexplained": -0.26286386159970127
+    },
+    {
+     "kappa": 1.0,
+     "unexplained": -0.2608014166449241
+    }
+   ],
+   "eiv_unexplained_at": {
+    "0.186729": -0.4359718989163579,
+    "0.242578": -0.38544113132006536
+   },
+   "n_covariate_columns": 2,
+   "dml_theta_logpts": -0.2861939157829554,
+   "dml_se": 0.008924449671336205,
+   "dml_nuisance": "xgboost",
+   "boot": null
+  },
+  {
+   "outcome_def": "cellmedian",
+   "covariate_set": "extended",
+   "learner": "logistic",
+   "n": 21261,
+   "n_female": 9260,
+   "n_male": 12001,
+   "powered": true,
+   "delta_label": -0.13137808969736847,
+   "delta_merit": -0.0009071400772457938,
+   "R": 0.13047094962012268,
+   "decomp_raw_logpts": -0.22282534314316216,
+   "decomp_explained": 0.0006390779583585097,
+   "decomp_unexplained": -0.22346442110152068,
+   "eiv_unexplained_at_kappa": -0.3866060206612123,
+   "kappa_point": 0.186729281562411,
+   "kappa_sweep": [
+    {
+     "kappa": 0.15,
+     "unexplained": -0.447402221614454
+    },
+    {
+     "kappa": 0.2,
+     "unexplained": -0.3712078814957753
+    },
+    {
+     "kappa": 0.25,
+     "unexplained": -0.3300911179925182
+    },
+    {
+     "kappa": 0.3,
+     "unexplained": -0.3043614054303415
+    },
+    {
+     "kappa": 0.35,
+     "unexplained": -0.28674277776885254
+    },
+    {
+     "kappa": 0.4,
+     "unexplained": -0.27392203364859447
+    },
+    {
+     "kappa": 0.45,
+     "unexplained": -0.26417421191332224
+    },
+    {
+     "kappa": 0.5,
+     "unexplained": -0.2565127502295124
+    },
+    {
+     "kappa": 0.55,
+     "unexplained": -0.2503325752646685
+    },
+    {
+     "kappa": 0.6,
+     "unexplained": -0.2452419619095805
+    },
+    {
+     "kappa": 0.65,
+     "unexplained": -0.24097611782759126
+    },
+    {
+     "kappa": 0.7,
+     "unexplained": -0.23734962290182585
+    },
+    {
+     "kappa": 0.75,
+     "unexplained": -0.23422876248388882
+    },
+    {
+     "kappa": 0.8,
+     "unexplained": -0.23151467900174225
+    },
+    {
+     "kappa": 0.85,
+     "unexplained": -0.2291327086074732
+    },
+    {
+     "kappa": 0.9,
+     "unexplained": -0.2270254066444987
+    },
+    {
+     "kappa": 0.95,
+     "unexplained": -0.2251478543204348
+    },
+    {
+     "kappa": 1.0,
+     "unexplained": -0.22346442110152048
+    }
+   ],
+   "eiv_unexplained_at": {
+    "0.186729": -0.3866060206612123,
+    "0.242578": -0.33495597783589864
+   },
+   "n_covariate_columns": 10,
+   "dml_theta_logpts": -0.22026742100493435,
+   "dml_se": 0.008853590395663552,
+   "dml_nuisance": "xgboost",
+   "boot": null
+  }
+ ],
+ "skipped_arms": [],
+ "arm": "wage",
+ "arm_options": {
+  "income_var": "WAGP",
+  "fulltime": true
+ },
+ "decomp_only": false,
+ "config_hash": "680f55416a1118f0",
+ "written_at": "2026-09-23T14:27:05",
+ "versions": {
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "numpy": "2.5.3",
+  "pandas": "3.0.5",
+  "scipy": "1.18.1",
+  "sklearn": "1.9.0",
+  "xgboost": "3.4.1",
+  "tabpfn": "8.5.0",
+  "torch": "2.14.0+cu130",
+  "folktables": "0.0.12"
+ }
+}

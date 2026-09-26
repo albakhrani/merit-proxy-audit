@@ -1,0 +1,65 @@
+{
+ "n_cells": 250,
+ "n_powered": 250,
+ "H2_1": {
+  "kappa_lit": 0.186729281562411,
+  "kappa_se": 0.017831107593434703,
+  "share_corrected_residual_positive": 0.0,
+  "share_corrected_residual_negative": 1.0,
+  "share_sign_preserved": 1.0,
+  "share_moved_up": 0.012,
+  "share_deflated_toward_zero": 0.012,
+  "share_sweep_crosses_zero": 0.0,
+  "note": "no interval for the corrected residual is stored; the bootstrap is on R only",
+  "falsifier": "an interval covering zero for the corrected residual in most powered cells",
+  "n_powered_cells": 250
+ },
+ "H2_2": {
+  "kappa_by_sex": {
+   "1": 0.19468236285989904,
+   "2": 0.17789488296532538
+  },
+  "difference": 0.01678747989457366,
+  "falsifier": "a differential large enough to flip the sign of the corrected merit gap"
+ },
+ "H2_3": {
+  "n_tested": 250,
+  "share_replicating_fdr05": 1.0,
+  "falsifier": "absent or reversed in a majority of powered cells"
+ },
+ "H2_4": {
+  "R_mean": 0.17099496517393523,
+  "R_sd": 0.026715583339027897,
+  "R_iqr": 0.031645696450808836
+ },
+ "H2_5": {
+  "Gamma": 0.012,
+  "predicted_below": 0.75,
+  "share_within_omega": 0.008,
+  "omega": 0.05,
+  "falsifier": "Gamma at or above 0.75 with the omega share at or above 0.50",
+  "verdict_rate_by_dimension": {
+   "covset_extended": 0.0013333333333333333,
+   "covset_premarket": 0.9513333333333334,
+   "learner_logistic": 0.499,
+   "learner_tabpfn": 0.467,
+   "learner_xgboost": 0.463,
+   "outcome_acs50k": 0.48733333333333334,
+   "outcome_cellmedian": 0.4653333333333333
+  },
+  "share_R_positive_all_specs": 1.0
+ },
+ "written_at": "2026-09-25T09:40:19",
+ "versions": {
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "numpy": "2.5.3",
+  "pandas": "3.0.5",
+  "scipy": "1.18.1",
+  "sklearn": "1.9.0",
+  "xgboost": "3.4.1",
+  "tabpfn": "8.5.0",
+  "torch": "2.14.0+cu130",
+  "folktables": "0.0.12"
+ }
+}
