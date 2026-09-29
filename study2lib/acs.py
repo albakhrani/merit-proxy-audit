@@ -96,7 +96,8 @@ def weighted_median(values, weights):
 def load_cell(root, state, year, covariates, outcome_def, sample_requires=None,
               schooling="code", income_var="PINCP", fulltime=False,
               occupation=False, adjinc=False, weighted_median_threshold=False,
-              age_range=(18, None), shift_female_schl=0.0):
+              age_range=(18, None), shift_female_schl=0.0, shift_female_share=None,
+              extra_columns=None):
     """One state-year analysis frame: X (with COW one-hot where present),
     y, group (1 = female), person weights.
 
@@ -130,6 +131,22 @@ def load_cell(root, state, year, covariates, outcome_def, sample_requires=None,
       age_range=(25, 65)           inclusive age bounds
       shift_female_schl=delta      women's schooling column shifted by delta
                                    (mean-error arm R11), in the coding in use
+
+    Options added 28 Sep 2026 (REGISTERED_CHANGES R14 and R16; defaults
+    reproduce the registered behaviour):
+      shift_female_share=s         women's years-coded schooling lowered by
+                                   s times the cell's own schooling lead
+                                   (person-weighted mean years of women minus
+                                   men, over every row the cell loads before
+                                   the complete-case filter, so the shift is
+                                   one number per cell). Needs schooling=
+                                   "years" and excludes shift_female_schl.
+                                   The lead and the applied shift are
+                                   recorded in the returned options.
+      extra_columns=[...]          further columns of the person file returned
+                                   row-aligned with X under "extra" (for the
+                                   replicate weights PWGTP1 to PWGTP80); they
+                                   never enter the design matrix.
     """
     path = fetch_acs_cell(root, state, year)
     base = ["AGEP", "SCHL", "SEX", "PINCP", "PWGTP", "WKHP", "COW"]
@@ -141,6 +158,13 @@ def load_cell(root, state, year, covariates, outcome_def, sample_requires=None,
         base.append("OCCP")
     if adjinc:
         base.append("ADJINC")
+    extra_columns = list(extra_columns or [])
+    if shift_female_share is not None:
+        if shift_female_schl:
+            raise ValueError("shift_female_share and shift_female_schl are mutually exclusive")
+        if schooling != "years":
+            raise ValueError("shift_female_share needs schooling='years'")
+    base += [c for c in extra_columns if c not in base]
     df = pd.read_csv(path, usecols=lambda c: c in base, low_memory=False)
     lo_age, hi_age = age_range
     df = df[(df["AGEP"] >= lo_age) & (df[income_var].notna()) & (df[income_var] > 0)]
@@ -155,6 +179,15 @@ def load_cell(root, state, year, covariates, outcome_def, sample_requires=None,
         else:
             raise ValueError(f"{state} {year}: neither WKW nor WKWN carries values; "
                              "cannot impose the full-year restriction")
+    lead_years = shift_applied = None
+    if shift_female_share is not None:
+        from .specs import SCHL_TO_YEARS as _yrs
+        ok = df["SCHL"].notna() & df["PWGTP"].notna()
+        yrs_all = df.loc[ok, "SCHL"].astype(int).map(_yrs).astype(float).to_numpy()
+        sex_all = df.loc[ok, "SEX"].to_numpy(float); w_all = df.loc[ok, "PWGTP"].to_numpy(float)
+        lead_years = float(np.average(yrs_all[sex_all == 2], weights=w_all[sex_all == 2])
+                           - np.average(yrs_all[sex_all == 1], weights=w_all[sex_all == 1]))
+        shift_applied = float(shift_female_share) * lead_years
     need = list(dict.fromkeys(list(covariates) + list(sample_requires or [])))
     df = df.dropna(subset=[c for c in need if c != "COW"])
     if "COW" in need:
@@ -173,6 +206,9 @@ def load_cell(root, state, year, covariates, outcome_def, sample_requires=None,
     if shift_female_schl:
         df = df.assign(SCHL=df["SCHL"].astype(float)
                        + shift_female_schl * (df["SEX"].to_numpy(float) == 2))
+    if shift_applied is not None:
+        df = df.assign(SCHL=df["SCHL"].astype(float)
+                       - shift_applied * (df["SEX"].to_numpy(float) == 2))
     y_cont = df[income_var].to_numpy(float)
     if adjinc:
         y_cont = y_cont * df["ADJINC"].to_numpy(float) / 1e6
@@ -204,5 +240,12 @@ def load_cell(root, state, year, covariates, outcome_def, sample_requires=None,
                                  ("age_range", list(age_range)),
                                  ("shift_female_schl", shift_female_schl))
                if v not in ("code", "PINCP", False, 0.0, [18, None])}
-    return {"X": X, "names": names, "y": y, "y_cont": y_cont,
+    if shift_female_share is not None:
+        options["shift_female_share"] = float(shift_female_share)
+        options["schooling_lead_years"] = lead_years
+        options["shift_female_schl_applied"] = -shift_applied
+    out = {"X": X, "names": names, "y": y, "y_cont": y_cont,
             "g": g, "w": w, "n": len(df), "options": options}
+    if extra_columns:
+        out["extra"] = np.column_stack([df[c].to_numpy(float) for c in extra_columns])
+    return out

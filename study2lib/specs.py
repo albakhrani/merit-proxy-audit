@@ -234,6 +234,58 @@ REGISTERED_CHANGES = [
                "in any of the 250 markets: occupation explains more of schooling's "
                "variance than the assumed reliability leaves as error. Recording the "
                "threshold reports that fact rather than losing the arm."},
+    {"date": "2026-09-28", "post_results": True,
+     "change": "R14: proportional mean-error arms (load_cell shift_female_share; "
+               "scripts/12_run_arms.py --arm meanerror --share, results/grid_prop_lit, "
+               "grid_prop_num, grid_prop_lit_workers, grid_prop_num_workers): women's "
+               "years-coded schooling lowered by a share of the cell's own person-weighted "
+               "schooling lead instead of a fixed number of years, the share being the "
+               "PIAAC estimate delta divided by the PIAAC schooling lead for the matching "
+               "sample and construct; decomposition fields only",
+     "reason": "pre-submission review of 28 September 2026: the error difference was "
+               "transported as a fixed number of years although the schooling lead "
+               "differs between the two surveys. Added post-results; every existing "
+               "mean-error output is untouched."},
+    {"date": "2026-09-28", "post_results": True,
+     "change": "R15: composite construct (piaac.add_composite_pvs: plausible value k is "
+               "the mean of PVLIT k and PVNUM k; scripts/02_estimate_kappa.py --construct "
+               "composite, results/kappa_composite.json and kappa_composite_workers.json; "
+               "scripts/11_piaac_validity.py --constructs composite, "
+               "results/piaac_validity_composite.json) and one decomposition-only mean-error "
+               "arm at the composite delta and the composite anchor, with the literacy "
+               "anchor stored through extra_kappas (results/grid_meanerror_composite)",
+     "reason": "pre-submission review of 28 September 2026: the construct was a single "
+               "skill. Added post-results; the literacy and numeracy anchors and every "
+               "existing arm are untouched."},
+    {"date": "2026-09-28", "post_results": True,
+     "change": "R16: successive-difference replication standard errors for the primary "
+               "decomposition from the ACS replicate weights PWGTP1 to PWGTP80 "
+               "(scripts/16_replicate_variance.py, results/replicate_se.json), compared "
+               "with the bootstrap standard errors implied by results/boot_primary",
+     "reason": "pre-submission review of 28 September 2026: the bootstrap ignored the ACS "
+               "replicate design. Added post-results; the replicate variance covers "
+               "sampling variance of the design only and does not propagate the anchor's "
+               "uncertainty, which the version 2 bootstrap does."},
+    {"date": "2026-09-28", "post_results": True,
+     "change": "R17: group-specific reference structure (decomposition.twofold_groupref; "
+               "scripts/17_groupref.py, results/grid_groupref, results/groupref_summary.json): "
+               "the outcome equation fitted separately by sex, the twofold decomposition "
+               "under the male and under the female coefficients as reference, uncorrected "
+               "and corrected at the common literacy anchor and at the sex-specific anchors "
+               "of results/kappa.json; premarket covariates, full sample, registered coding",
+     "reason": "pre-submission review of 28 September 2026: the differential-reliability "
+               "channel was closed only by the pooled-reference estimator. Added "
+               "post-results; the pooled estimator and its outputs are untouched."},
+    {"date": "2026-09-28", "post_results": True,
+     "change": "R18: attainment-indicator arm (decomposition.indicator_columns; "
+               "scripts/18_dummies.py, results/grid_dummies, results/dummies_summary.json): "
+               "pooled-reference decomposition with the attainment code entered as one "
+               "indicator per observed value (lowest dropped) plus age, premarket only, "
+               "full sample, uncorrected because the errors-in-variables correction is "
+               "not defined for a set of indicators",
+     "reason": "pre-submission review of 28 September 2026: the schooling code entered as "
+               "one linear column. Added post-results; the linear-coding outputs in "
+               "results/grid are untouched."},
 ]
 
 

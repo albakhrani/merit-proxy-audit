@@ -78,7 +78,7 @@ One command reruns everything, from the two data fetches to the hypotheses file,
 venv\Scripts\python.exe reproduce.py --root acs_data --workers 3
 ```
 
-`reproduce.py --list` prints the 34 commands without running them. The script refuses to run while `results/` already holds run logs; move them aside, or pass `--force` to run into the existing folder (cells whose configuration hash matches are kept). Approximate cost, from the `timing_s` fields of the run logs: the registered grid about 25 hours of cell time, the harmonised arm about 10 hours, the review arms and the mean-error arms together about 40 hours, and the three bootstraps several hours each. With three workers the recorded runs took several days of wall time on one laptop with an NVIDIA RTX 4080 Laptop GPU. The worker count affects runtime only: every cell draws its random streams from the primary seed inside the cell (the bootstrap adds a per-cell offset derived from the state code and year), so no result depends on which worker runs a cell or on how many run at once.
+`reproduce.py --list` prints the 48 commands without running them. The script refuses to run while `results/` already holds run logs; move them aside, or pass `--force` to run into the existing folder (cells whose configuration hash matches are kept). Approximate cost, from the `timing_s` fields of the run logs: the registered grid about 25 hours of cell time, the harmonised arm about 10 hours, the review arms and the mean-error arms together about 40 hours, and the three bootstraps several hours each. With three workers the recorded runs took several days of wall time on one laptop with an NVIDIA RTX 4080 Laptop GPU. The worker count affects runtime only: every cell draws its random streams from the primary seed inside the cell (the bootstrap adds a per-cell offset derived from the state code and year), so no result depends on which worker runs a cell or on how many run at once.
 
 The steps, in the order the recorded runs used:
 
@@ -95,10 +95,17 @@ The steps, in the order the recorded runs used:
 11. `scripts/07_boot_primary.py --folds-by-person --kappa-draw`: the bootstrap, version 2, on the primary arm and on the mean-error arm (`results/boot_primary_v2`, `boot_meanerror_lit`).
 12. `scripts/15_schooling_lead.py`: the between-sex difference in mean schooling per market (`results/schooling_lead.json`, `schooling_lead_age2565.json`).
 13. `scripts/10_pooled_gap.py` and `scripts/05_hypotheses.py`: the pooled estimates and the registered hypotheses (`results/pooled_gap.json`, `results/hypotheses.json`).
+14. `scripts/02_estimate_kappa.py --construct composite` and `scripts/11_piaac_validity.py --constructs composite`: the reliability anchors and the differential-validity test for the composite construct, whose plausible values are the mean of the literacy and numeracy values (`results/kappa_composite.json`, `kappa_composite_workers.json`, `piaac_validity_composite.json`).
+15. `scripts/12_run_arms.py --arm meanerror --share`: the proportional mean-error arms, which lower women's years-coded schooling by a share of each market's own schooling lead, on the full sample and on ages 25 to 65 (`results/grid_prop_lit`, `grid_prop_num`, `grid_prop_lit_workers`, `grid_prop_num_workers`).
+16. `scripts/12_run_arms.py --arm meanerror --skill composite`: the mean-error arm at the composite delta and the composite anchor, with the literacy anchor stored as well (`results/grid_meanerror_composite`).
+17. `scripts/14_meanerror_summary.py`: the summaries of the proportional and composite arms (`results/meanerror_summary_prop.json`, `meanerror_summary_prop_workers.json`, `meanerror_summary_composite.json`).
+18. `scripts/16_replicate_variance.py`: successive-difference replication standard errors of the primary decomposition from the ACS replicate weights, compared with the bootstrap standard errors (`results/replicate_se.json`). Replicate weights that are negative in the source file (0.0011 per cent of person-replicate entries) are set to zero in this script and counted per market in its output.
+19. `scripts/17_groupref.py`: the decomposition under the male and under the female coefficients as reference, uncorrected and corrected at the common and at the sex-specific anchors, with its summary (`results/grid_groupref`, `results/groupref_summary.json`).
+20. `scripts/18_dummies.py`: the pooled-reference decomposition with the attainment code entered as indicator columns, uncorrected, with its summary (`results/grid_dummies`, `results/dummies_summary.json`).
 
 ## The registered plan and the amendment ledger
 
-`study2lib/specs.py` holds the registered specification grid: the outcome definitions, the covariate sets, the learners, the reliability sweep, the seed, the bootstrap size and the powered-cell rule. Any change after the first real cell was estimated is an entry in `REGISTERED_CHANGES` in the same file, with its date, the change and the reason. The ledger has 14 entries: the first, dated 14 September 2026, was made before any real cell was estimated and lowers the floor of the reliability sweep; the other 13, dated 15, 22 and 25 September 2026, are flagged `post_results` and add the arms and corrections that the manuscript reports.
+`study2lib/specs.py` holds the registered specification grid: the outcome definitions, the covariate sets, the learners, the reliability sweep, the seed, the bootstrap size and the powered-cell rule. Any change after the first real cell was estimated is an entry in `REGISTERED_CHANGES` in the same file, with its date, the change and the reason. The ledger has 19 entries: the first, dated 14 September 2026, was made before any real cell was estimated and lowers the floor of the reliability sweep; the other 18, dated 15, 22, 25 and 28 September 2026, are flagged `post_results` and add the arms and corrections that the manuscript reports (entries R14 to R18, dated 28 September 2026, are the review arms listed as steps 14 to 20 above).
 
 ## Configuration hashes
 
@@ -126,6 +133,13 @@ Every cell file under `results/` carries `config_hash` (a SHA-256 prefix of the 
 | `grid_wmedian` | `1d746efccb6d6e83` |
 | `grid_age2565` | `519f45228d8398d3` |
 | `grid_occ` | `824e73d366ff38da` |
+| `grid_prop_lit` | `79e45b5dea64cacb` |
+| `grid_prop_num` | `a6fbd018d2f494d3` |
+| `grid_prop_lit_workers` | `35d102211e490fe4` |
+| `grid_prop_num_workers` | `d6dfbee7fd11705d` |
+| `grid_meanerror_composite` | `694c31dcd98afa38` |
+| `grid_groupref` | `bbba22a80306930d` |
+| `grid_dummies` | `3785b4b9739b0054` |
 | `pooled_gap.json` | `b8550a8e79548b18` |
 | `piaac_validity.json` | `b1621d3a0603a87e` |
 | `schooling_lead.json` | `0676c828685f79e1` |

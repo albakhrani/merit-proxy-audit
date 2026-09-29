@@ -24,6 +24,12 @@ earners-aged-25-to-65 subset used for the second anchor:
     edcat8_age    EDCAT8_TC1 category dummies plus age (female coefficient
                   only; no benchmark is defined for a categorical proxy)
 
+Added 28 Sep 2026 (REGISTERED_CHANGES R15): --constructs selects the
+constructs to run; "composite" uses plausible values that are the mean of
+the literacy and numeracy values with the same index (piaac.add_composite_pvs):
+
+    python scripts/11_piaac_validity.py --file piaac_data/prgusap2.csv         --constructs composite --out results/piaac_validity_composite.json
+
 Writes results/piaac_validity.json and prints one line per specification.
 Reading the output: "difference" is the female coefficient minus the
 classical benchmark, with its replicate-based standard error; "delta" is
@@ -36,7 +42,7 @@ import numpy as np
 import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from study2lib.piaac import (load_piaac, resolve_column, differential_validity,
-                             PV_LIT, PV_NUM)
+                             add_composite_pvs, pv_columns, PV_LIT, PV_NUM)
 from study2lib.runlog import write_json, config_hash
 from study2lib import specs
 
@@ -70,8 +76,13 @@ def main():
     ap.add_argument("--file", required=True)
     ap.add_argument("--proxy", default="YRSQUAL")
     ap.add_argument("--out", default="results/piaac_validity.json")
+    ap.add_argument("--constructs", nargs="*", default=["lit", "num"],
+                    choices=["lit", "num", "composite"],
+                    help="constructs to run; composite is the mean of literacy and numeracy (R15)")
     a = ap.parse_args()
     df = load_piaac(a.file, extra_cols=("EDCAT8_TC1", "EDCAT8", "EARNFLAGC2", "AGEG10LFS"))
+    if "composite" in a.constructs:
+        df = add_composite_pvs(df)
     proxy = resolve_column(df, a.proxy)
     if proxy is None:
         print(f"proxy {a.proxy} not in file")
@@ -99,7 +110,9 @@ def main():
               f"{'benchmark':>17s} {'difference':>17s} {'z':>6s} {'delta(yrs)':>17s} "
               f"{'kappa_w':>7s} {'b_x':>8s}")
     print(header)
-    for skill, pv in (("lit", PV_LIT), ("num", PV_NUM)):
+    if "composite" in a.constructs:
+        out["construct"] = "composite: plausible value k is the mean of PVLIT k and PVNUM k"
+    for skill, pv in ((c, pv_columns(c)) for c in a.constructs):
         out["specs"][skill] = {}
         for sname, mask in samples.items():
             sub = df[mask]
@@ -124,10 +137,12 @@ def main():
                       % (skill, sname, spec, r["n"], fmt(r["b_female"]), fmt(r["benchmark"]),
                          fmt(r["difference"]), ztxt, fmt(r["delta_proxy_units"]), ktxt, btxt))
     out["config_hash"] = config_hash({"proxy": proxy, "edcat": edcat, "samples": list(samples),
-                                      "seed": specs.PRIMARY_SEED})
+                                      "seed": specs.PRIMARY_SEED,
+                                      **({"constructs": a.constructs} if a.constructs != ["lit", "num"] else {})})
     write_json(a.out, out)
-    r = out["specs"]["lit"]["all"]["years_noage"]
-    print(f"\nheadline (literacy, all adults, no age terms): difference "
+    head = a.constructs[0]
+    r = out["specs"][head]["all"]["years_noage"]
+    print(f"\nheadline ({head}, all adults, no age terms): difference "
           f"{r['difference']['point']:+.3f} (se {r['difference']['se']:.3f}, z "
           f"{r['difference']['z']:+.2f}); delta {r['delta_proxy_units']['point']:+.3f} years "
           f"(se {r['delta_proxy_units']['se']:.3f})")

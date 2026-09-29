@@ -1,0 +1,72 @@
+{
+ "state": "WA",
+ "year": 2017,
+ "seed": 20261001,
+ "timing_s": 1.2,
+ "arm": "dummies",
+ "decomp_only": true,
+ "arm_options": {
+  "covariates": [
+   "AGEP",
+   "SCHL"
+  ],
+  "outcome_def": "acs50k",
+  "schooling": "indicator columns, one per observed SCHL value, lowest dropped",
+  "correction": "none: the errors-in-variables correction is not defined for a set of indicators, so the arm is uncorrected",
+  "reference": "pooled"
+ },
+ "n": 53997,
+ "n_female": 26557,
+ "n_male": 27440,
+ "n_schl_levels_observed": 24,
+ "indicator_levels": [
+  2.0,
+  3.0,
+  4.0,
+  5.0,
+  6.0,
+  7.0,
+  8.0,
+  9.0,
+  10.0,
+  11.0,
+  12.0,
+  13.0,
+  14.0,
+  15.0,
+  16.0,
+  17.0,
+  18.0,
+  19.0,
+  20.0,
+  21.0,
+  22.0,
+  23.0,
+  24.0
+ ],
+ "n_covariate_columns": 24,
+ "decomp_raw_logpts": -0.4613602173319684,
+ "decomp_explained": 0.03975974492869957,
+ "decomp_unexplained": -0.501119962260668,
+ "linear_coding_from_grid": {
+  "decomp_raw_logpts": -0.4613602173319684,
+  "decomp_explained": 0.034510989551433294,
+  "decomp_unexplained": -0.4958712068834017,
+  "config_hash": "de6c1429664b99d0"
+ },
+ "difference_from_linear_unexplained": -0.005248755377266323,
+ "config_hash": "3785b4b9739b0054",
+ "written_at": "2026-09-28T21:02:11",
+ "versions": {
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "numpy": "2.5.3",
+  "pandas": "3.0.5",
+  "scipy": "1.18.1",
+  "sklearn": "1.9.0",
+  "xgboost": "3.4.1",
+  "tabpfn": "8.5.0",
+  "torch": "2.14.0+cu130",
+  "folktables": "0.0.12"
+ }
+}

@@ -19,6 +19,15 @@ years of a state kept together, seeded from the primary seed). Nothing is
 re-estimated. Writes results/meanerror_summary.json.
 
     python scripts/14_meanerror_summary.py --results results --tags lit lit_lo lit_hi num
+
+Added 28 Sep 2026 (REGISTERED_CHANGES R14 and R15): a tag names either
+results/grid_meanerror_<tag> or, when that folder does not exist,
+results/grid_<tag>, so the proportional arms (grid_prop_lit and so on) are
+summarised with the same quantities. For a proportional arm delta_years is
+None, the share is recorded, and the per-market applied shift (from each
+cell's load_options) is pooled as applied_shift_years:
+
+    python scripts/14_meanerror_summary.py --results results --tags prop_lit prop_num         --out results/meanerror_summary_prop.json
 """
 from __future__ import annotations
 import argparse, glob, json, os, sys
@@ -41,7 +50,8 @@ def load_arm(d):
             if s["outcome_def"] != specs.OUTCOME_DEFS[0]:
                 continue                       # the decomposition does not depend on the outcome
             cell.setdefault(s["covariate_set"], s)
-        out[(c["state"], c["year"])] = {"specs": cell, "options": c.get("arm_options", {})}
+        out[(c["state"], c["year"])] = {"specs": cell, "options": c.get("arm_options", {}),
+                                        "load_options": c.get("load_options", {})}
     return out
 
 
@@ -78,15 +88,24 @@ def main():
     print(f"years-coded arm: {len(years)} markets")
     for tag in a.tags:
         d = os.path.join(a.results, f"grid_meanerror_{tag}")
+        if not os.path.isdir(d) and os.path.isdir(os.path.join(a.results, f"grid_{tag}")):
+            d = os.path.join(a.results, f"grid_{tag}")
         me = load_arm(d)
         if not me:
             print(f"  {tag}: no cells in {d}, skipped"); continue
         common = sorted(set(years) & set(me))
-        delta = -float(next(iter(me.values()))["options"]["shift_female_schl"])
-        rec = {"delta_years": delta, "n_markets": len(common), "covsets": {}}
+        first = next(iter(me.values()))
+        proportional = "shift_female_share" in first["options"]
+        delta = None if proportional else -float(first["options"]["shift_female_schl"])
+        rec = {"delta_years": delta, "n_markets": len(common), "covsets": {}, "arm_dir": d}
+        if proportional:
+            rec["share_of_schooling_lead"] = float(first["options"]["shift_female_share"])
         for cs in sorted(next(iter(years.values()))["specs"]):
             rows = []
-            by_state = {q: {} for q in ("U_y1", "U_yk", "U_m1", "U_mk", "deep_y", "deep_m", "meanerror_shift")}
+            quantities = ["U_y1", "U_yk", "U_m1", "U_mk", "deep_y", "deep_m", "meanerror_shift"]
+            if proportional:
+                quantities += ["applied_shift_years", "schooling_lead_years"]
+            by_state = {q: {} for q in quantities}
             for key in common:
                 sy = years[key]["specs"].get(cs); sm = me[key]["specs"].get(cs)
                 if sy is None or sm is None:
@@ -102,6 +121,10 @@ def main():
                              "meanerror_shift": um1 - uy1,
                              "sign_flip_in_sweep_m": (min(sweep_m) < 0 < max(sweep_m)),
                              "sweep_m_max": max(sweep_m), "sweep_y_max": max(sweep_y)})
+                if proportional:
+                    lo = me[key]["load_options"]
+                    rows[-1]["applied_shift_years"] = -float(lo["shift_female_schl_applied"])
+                    rows[-1]["schooling_lead_years"] = float(lo["schooling_lead_years"])
                 st = key[0]
                 for q in by_state:
                     by_state[q].setdefault(st, []).append(rows[-1][q])
@@ -120,13 +143,15 @@ def main():
                 "U_y_sign_flips_in_sweep": int(sum(r["sweep_y_max"] > 0 for r in rows)),
                 "pooled": {},
             }
-            for q in ("U_y1", "U_yk", "U_m1", "U_mk", "deep_y", "deep_m", "meanerror_shift"):
+            for q in quantities:
                 rng = np.random.default_rng(specs.PRIMARY_SEED)
                 summ["pooled"][q] = block_mean(by_state[q], rng, a.n_boot)
             summ["markets"] = rows
             rec["covsets"][cs] = summ
             p = summ["pooled"]
-            print(f"  delta {delta:.3f} yrs, {cs:12s} n={n:3d} | pooled U: uncorrected {p['U_y1']['mean']:+.3f}, "
+            label = (f"share {rec['share_of_schooling_lead']:.6f} (mean shift {p['applied_shift_years']['mean']:.3f} yrs)"
+                     if proportional else f"delta {delta:.3f} yrs")
+            print(f"  {label}, {cs:12s} n={n:3d} | pooled U: uncorrected {p['U_y1']['mean']:+.3f}, "
                   f"reliability only {p['U_yk']['mean']:+.3f}, mean error only {p['U_m1']['mean']:+.3f}, "
                   f"both {p['U_mk']['mean']:+.3f} [{p['U_mk']['ci_lo']:+.3f}, {p['U_mk']['ci_hi']:+.3f}] | "
                   f"deepens after mean error {summ['reliability_correction_deepens_after_meanerror']}/{n}, "

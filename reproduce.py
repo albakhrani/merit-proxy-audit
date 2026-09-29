@@ -18,7 +18,8 @@ kept and only missing cells are computed).
 Approximate cost, from the timing_s fields of the recorded run logs: the
 registered grid about 25 hours of cell time, the harmonised arm about 10
 hours, the six review arms and the eight mean-error arms together about 40
-hours, and the three bootstraps several hours each; with three workers the
+hours, the three bootstraps several hours each, and the review arms of
+28 September 2026 (decomposition only) a few hours in all; with three workers the
 recorded runs took several days of wall time on one laptop with an NVIDIA
 RTX 4080 Laptop GPU. The two data fetches transfer about 15 GB (ACS) and
 35 MB (PIAAC).
@@ -42,6 +43,19 @@ MEANERROR_ARMS = [
     ("num_hi",      "0.694", ["--decomp-only"]),
     ("lit_workers", "0.580", ["--age2565", "--decomp-only"]),
     ("num_workers", "0.871", ["--age2565", "--decomp-only"]),
+]
+
+# Shares of each market's own schooling lead for the proportional mean-error
+# arms (ledger entry R14): the PIAAC delta divided by the PIAAC schooling lead
+# from results/piaac_validity.json, years_noage (all adults: literacy
+# 0.807388, numeracy 1.522797; earners aged 25 to 65: literacy 0.944227,
+# numeracy 1.417410).
+PROPORTIONAL_ARMS = [
+    # (tag, share, extra arguments)
+    ("lit",         "0.807388", []),
+    ("num",         "1.522797", []),
+    ("lit_workers", "0.944227", ["--age2565"]),
+    ("num_workers", "1.417410", ["--age2565"]),
 ]
 
 
@@ -80,6 +94,25 @@ def steps(root, workers):
     yield "schooling lead per market, ages 25 to 65 (results/schooling_lead_age2565.json)", [s("15_schooling_lead.py"), "--root", root, "--age2565"] + w
     yield "pooled cross-market estimates (results/pooled_gap.json)", [s("10_pooled_gap.py")]
     yield "registered hypotheses (results/hypotheses.json)", [s("05_hypotheses.py")]
+    # Review arms of 28 September 2026 (ledger entries R14 to R18), in the order they were run.
+    kappa_c = os.path.join("results", "kappa_composite.json")
+    kappa_cw = os.path.join("results", "kappa_composite_workers.json")
+    yield "composite reliability anchor, all adults (results/kappa_composite.json)", [s("02_estimate_kappa.py"), "--file", piaac, "--proxy", "YRSQUALC2", "--construct", "composite", "--out", kappa_c]
+    yield "composite reliability anchor, earners aged 25 to 65 (results/kappa_composite_workers.json)", [s("02_estimate_kappa.py"), "--file", piaac, "--proxy", "YRSQUALC2", "--construct", "composite", "--subset", "workers", "--out", kappa_cw]
+    yield "composite differential-validity test (results/piaac_validity_composite.json)", [s("11_piaac_validity.py"), "--file", piaac, "--constructs", "composite", "--out", os.path.join("results", "piaac_validity_composite.json")]
+    for tag, share, extra in PROPORTIONAL_ARMS[:2]:
+        outdir = os.path.join("results", "grid_prop_" + tag)
+        yield "proportional mean-error arm, share " + share + " (" + outdir + ")", [s("12_run_arms.py"), "--arm", "meanerror", "--share", share, "--decomp-only", "--outdir", outdir, "--root", root] + extra + w
+    yield "composite mean-error arm, delta 0.428653 at the composite anchor (results/grid_meanerror_composite)", [s("12_run_arms.py"), "--arm", "meanerror", "--delta", "0.428653", "--skill", "composite", "--kappa", kappa_c, "--kappa-workers", kappa_cw, "--extra-kappa", "0.186729", "--decomp-only", "--outdir", os.path.join("results", "grid_meanerror_composite"), "--root", root] + w
+    for tag, share, extra in PROPORTIONAL_ARMS[2:]:
+        outdir = os.path.join("results", "grid_prop_" + tag)
+        yield "proportional mean-error arm, share " + share + " (" + outdir + ")", [s("12_run_arms.py"), "--arm", "meanerror", "--share", share, "--decomp-only", "--outdir", outdir, "--root", root] + extra + w
+    yield "proportional summary, all adults (results/meanerror_summary_prop.json)", [s("14_meanerror_summary.py"), "--results", "results", "--tags", "prop_lit", "prop_num", "--out", os.path.join("results", "meanerror_summary_prop.json")]
+    yield "composite summary (results/meanerror_summary_composite.json)", [s("14_meanerror_summary.py"), "--results", "results", "--tags", "composite", "--out", os.path.join("results", "meanerror_summary_composite.json")]
+    yield "proportional summary, ages 25 to 65 (results/meanerror_summary_prop_workers.json)", [s("14_meanerror_summary.py"), "--results", "results", "--years-dir", os.path.join("results", "grid_years_age2565"), "--tags", "prop_lit_workers", "prop_num_workers", "--out", os.path.join("results", "meanerror_summary_prop_workers.json")]
+    yield "replicate-weight standard errors for the primary decomposition (results/replicate_se.json)", [s("16_replicate_variance.py"), "--root", root] + w
+    yield "group-specific reference arm and its summary (results/grid_groupref, results/groupref_summary.json)", [s("17_groupref.py"), "--root", root] + w
+    yield "attainment-indicator arm and its summary (results/grid_dummies, results/dummies_summary.json)", [s("18_dummies.py"), "--root", root] + w
 
 
 def main():

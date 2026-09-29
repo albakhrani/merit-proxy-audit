@@ -1,0 +1,113 @@
+{
+ "state": "DE",
+ "year": 2017,
+ "seed": 20261001,
+ "timing_s": 0.1,
+ "arm": "groupref",
+ "decomp_only": true,
+ "arm_options": {
+  "covariates": [
+   "AGEP",
+   "SCHL"
+  ],
+  "outcome_def": "acs50k",
+  "schooling": "code",
+  "kappa_common": 0.186729281562411,
+  "kappa_men": 0.19468236285989904,
+  "kappa_women": 0.17789488296532538,
+  "reference": "group-specific coefficients from separate weighted least squares by sex",
+  "correction": "errors-in-variables on the schooling column inside each sex's regression"
+ },
+ "n": 6596,
+ "n_female": 3417,
+ "n_male": 3179,
+ "covariate_names": [
+  "AGEP",
+  "SCHL"
+ ],
+ "uncorrected": {
+  "raw": -0.32819183701325727,
+  "explained_male_ref": 0.06566013462275247,
+  "unexplained_male_ref": -0.3938519716360097,
+  "explained_female_ref": 0.06004375422052758,
+  "unexplained_female_ref": -0.38823559123378487,
+  "beta_women": [
+   7.60487078842844,
+   0.00749252659314463,
+   0.11318999089221866
+  ],
+  "beta_men": [
+   7.935018034206746,
+   0.01633057164018261,
+   0.09247638994051582
+  ]
+ },
+ "corrected_common_anchor": {
+  "raw": -0.32819183701325727,
+  "explained_male_ref": 0.23279590869794944,
+  "unexplained_male_ref": -0.5609877457112067,
+  "explained_female_ref": 0.298785460670587,
+  "unexplained_female_ref": -0.6269772976838442,
+  "beta_women": [
+   -2.643135769798704,
+   0.01738258111885468,
+   0.6398013871241613
+  ],
+  "beta_men": [
+   0.7330481068379449,
+   0.013804254721100055,
+   0.49749216159215504
+  ]
+ },
+ "corrected_sex_specific_anchors": {
+  "raw": -0.32819183701325727,
+  "explained_male_ref": 0.22436427292903752,
+  "unexplained_male_ref": -0.5525561099422948,
+  "explained_female_ref": 0.31422484697097397,
+  "unexplained_female_ref": -0.6424166839842312,
+  "beta_women": [
+   -3.3058726431085432,
+   0.018022169293978447,
+   0.6738572582055381
+  ],
+  "beta_men": [
+   1.0963718032891308,
+   0.013931701907176205,
+   0.47705999806446536
+  ]
+ },
+ "unexplained": {
+  "raw": -0.32819183701325727,
+  "male_ref_uncorrected": -0.3938519716360097,
+  "male_ref_corrected_common": -0.5609877457112067,
+  "male_ref_corrected_sexspecific": -0.5525561099422948,
+  "female_ref_uncorrected": -0.38823559123378487,
+  "female_ref_corrected_common": -0.6269772976838442,
+  "female_ref_corrected_sexspecific": -0.6424166839842312,
+  "pooled_ref_uncorrected": -0.39083416593246395,
+  "pooled_ref_corrected": -0.5930317444788593
+ },
+ "pooled_reference_from_grid": {
+  "decomp_raw_logpts": -0.32819183701325727,
+  "decomp_explained": 0.06264232891920668,
+  "decomp_unexplained": -0.39083416593246395,
+  "eiv_unexplained_at_kappa": -0.5930317444788593,
+  "kappa_point": 0.186729281562411,
+  "n": 6596,
+  "config_hash": "de6c1429664b99d0"
+ },
+ "config_hash": "bbba22a80306930d",
+ "written_at": "2026-09-28T20:51:42",
+ "versions": {
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "numpy": "2.5.3",
+  "pandas": "3.0.5",
+  "scipy": "1.18.1",
+  "sklearn": "1.9.0",
+  "xgboost": "3.4.1",
+  "tabpfn": "8.5.0",
+  "torch": "2.14.0+cu130",
+  "folktables": "0.0.12"
+ }
+}

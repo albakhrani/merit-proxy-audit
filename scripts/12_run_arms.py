@@ -50,6 +50,17 @@ sample:
     python scripts/12_run_arms.py --arm meanerror --delta 0.580 --age2565 --decomp-only \
         --outdir results/grid_meanerror_lit_workers --root acs_data
 
+Added 28 Sep 2026 (REGISTERED_CHANGES R14 and R15): --share lowers women's
+years-coded schooling by that share of the cell's own person-weighted
+schooling lead instead of a fixed --delta (the two are mutually exclusive;
+the lead and the applied shift are recorded in each cell's load_options);
+--skill composite reads the composite anchor from a kappa file written with
+02_estimate_kappa.py --construct composite; --extra-kappa adds further
+reliabilities at which the corrected residual is stored exactly:
+
+    python scripts/12_run_arms.py --arm meanerror --share 0.807388 --decomp-only         --outdir results/grid_prop_lit --root acs_data
+    python scripts/12_run_arms.py --arm meanerror --delta 0.4 --skill composite         --kappa results/kappa_composite.json --kappa-workers results/kappa_composite_workers.json         --extra-kappa 0.186729 --decomp-only --outdir results/grid_meanerror_composite --root acs_data
+
 Resumable; rerun the same command to retry failures. Writes
 results/grid_<arm>/{STATE}_{YEAR}.json.
 """
@@ -75,8 +86,11 @@ def _one(args):
     res["arm_options"] = load_kwargs
     res["decomp_only"] = bool(decomp_only)
     if arm == "meanerror":
+        shift_txt = (f"{-load_kwargs['shift_female_schl']:.4f} years" if "shift_female_schl" in load_kwargs
+                     else f"{load_kwargs['shift_female_share']:.6f} times the cell's schooling lead "
+                          f"({-res['load_options'].get('shift_female_schl_applied', 0.0):.4f} years here)")
         res["note"] = ("decomposition fields only; women's years-coded schooling lowered by "
-                       f"{-load_kwargs['shift_female_schl']:.4f} years before the correction; "
+                       f"{shift_txt} before the correction; "
                        "R and delta values of this arm are not to be used"
                        + ("; ages 25 to 65 with the earners anchor" if "age_range" in load_kwargs else "")
                        + ("; learners, DML and the R bootstrap skipped" if decomp_only else ""))
@@ -95,12 +109,17 @@ def main():
     ap.add_argument("--root", default="acs_data")
     ap.add_argument("--kappa", default="results/kappa.json")
     ap.add_argument("--kappa-workers", default="results/kappa_workers.json")
-    ap.add_argument("--skill", default="lit", choices=["lit", "num"])
+    ap.add_argument("--skill", default="lit", choices=["lit", "num", "composite"])
     ap.add_argument("--learners", nargs="*", default=["logistic"])
     ap.add_argument("--delta", type=float, default=None,
                     help="meanerror arm: sex difference in mean proxy error in years "
                          "(positive = women's schooling overstates); subtracted from "
                          "women's years-coded schooling")
+    ap.add_argument("--share", type=float, default=None,
+                    help="meanerror arm: lower women's years-coded schooling by this share of "
+                         "the cell's own person-weighted schooling lead (R14); excludes --delta")
+    ap.add_argument("--extra-kappa", nargs="*", type=float, default=[],
+                    help="further reliabilities at which the corrected residual is stored exactly")
     ap.add_argument("--states", nargs="*", default=sorted(STATE_FIPS))
     ap.add_argument("--years", nargs="*", type=int, default=None)
     ap.add_argument("--workers", type=int, default=3)
@@ -121,17 +140,19 @@ def main():
 
     k_all = json.load(open(a.kappa, encoding="utf-8"))[a.skill]["overall"]["kappa"]
     k_work = json.load(open(a.kappa_workers, encoding="utf-8"))[a.skill]["overall"]["kappa"]
-    extra = sorted({float(k_all), float(k_work)})      # full precision; keyed to 6 decimals in the cell
+    extra = sorted({float(k_all), float(k_work)} | {float(k) for k in a.extra_kappa})  # full precision; keyed to 6 decimals in the cell
 
     if a.arm == "meanerror":
-        if a.delta is None:
-            print("meanerror arm needs --delta (sex difference in mean proxy error, years, "
-                  "from results/piaac_validity.json)")
+        if (a.delta is None) == (a.share is None):
+            print("meanerror arm needs exactly one of --delta (sex difference in mean proxy error, "
+                  "years, from results/piaac_validity.json) and --share (that delta divided by "
+                  "the PIAAC schooling lead)")
             return 1
         if a.outdir is None:
             print("meanerror arm needs --outdir (one directory per delta)")
             return 1
-        load_kwargs = {"schooling": "years", "shift_female_schl": -float(a.delta)}
+        load_kwargs = ({"schooling": "years", "shift_female_schl": -float(a.delta)} if a.delta is not None
+                       else {"schooling": "years", "shift_female_share": float(a.share)})
         if a.age2565:
             load_kwargs["age_range"] = (25, 65)
     else:

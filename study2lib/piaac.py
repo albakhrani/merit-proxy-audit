@@ -38,6 +38,29 @@ from .eiv import estimate_kappa, weighted_correlation
 
 PV_LIT = [f"PVLIT{i}" for i in range(1, 11)]
 PV_NUM = [f"PVNUM{i}" for i in range(1, 11)]
+PV_COMPOSITE = [f"PVCOMP{i}" for i in range(1, 11)]
+
+
+def add_composite_pvs(df):
+    """Append the composite construct's plausible values to a loaded file
+    (28 Sep 2026, REGISTERED_CHANGES R15): PVCOMP k is the arithmetic mean
+    of PVLIT k and PVNUM k for the same index k, so that the ten composite
+    values keep the file's plausible-value structure and are combined by
+    the same Rubin rules, weights and replicate design as either skill.
+    Returns the frame with the ten columns added; the column names are
+    PV_COMPOSITE. Nothing else in the frame is changed."""
+    df = df.copy()
+    for lit, num, comp in zip(PV_LIT, PV_NUM, PV_COMPOSITE):
+        a = pd.to_numeric(df[lit], errors="coerce").to_numpy(float)
+        b = pd.to_numeric(df[num], errors="coerce").to_numpy(float)
+        df[comp] = (a + b) / 2.0
+    return df
+
+
+def pv_columns(construct):
+    """Plausible-value column names for a construct name: "lit", "num" or
+    "composite" (the mean of literacy and numeracy, see add_composite_pvs)."""
+    return {"lit": PV_LIT, "num": PV_NUM, "composite": PV_COMPOSITE}[construct]
 
 # cycle 1 name -> cycle 2 name; both generations are loaded when present
 CYCLE_NAMES = {

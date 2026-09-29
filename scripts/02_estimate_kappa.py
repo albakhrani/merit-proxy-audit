@@ -7,6 +7,13 @@ overall and by stratum, from a PIAAC US public use file.
     python scripts/02_estimate_kappa.py --file piaac_data/prgusap1.csv --proxy YRSQUAL \
         --out results/kappa_cycle1.json
 
+Added 28 Sep 2026 (REGISTERED_CHANGES R15): --construct composite adds a
+"composite" block whose plausible values are the mean of the literacy and
+numeracy values with the same index (piaac.add_composite_pvs); the literacy
+and numeracy blocks are written as before:
+
+    python scripts/02_estimate_kappa.py --file piaac_data/prgusap2.csv --proxy YRSQUALC2         --construct composite --out results/kappa_composite.json
+
 Writes results/kappa.json by default. Proxy names resolve across cycles
 (YRSQUAL finds YRSQUALC2 and the reverse); if the proxy is absent under
 either name the script lists the education variables it can see and exits
@@ -21,7 +28,7 @@ import argparse, json, os, sys
 import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from study2lib.piaac import (load_piaac, kappa_by_stratum, kappa_sex_difference,
-                             resolve_column, PV_LIT, PV_NUM)
+                             resolve_column, add_composite_pvs, PV_LIT, PV_NUM, PV_COMPOSITE)
 from study2lib.runlog import write_json
 
 STRATA = {
@@ -43,8 +50,13 @@ def main():
                     help="workers: EARNFLAGC2 == 1 and AGEG10LFS bands 2-5 "
                          "(earners aged 25-65), the composition-matched "
                          "anchor added 15 Sep 2026 (post-results, disclosed)")
+    ap.add_argument("--construct", default=None, choices=["composite"],
+                    help="composite: also estimate the reliability for the mean of the "
+                         "literacy and numeracy plausible values (R15)")
     a = ap.parse_args()
     df = load_piaac(a.file)
+    if a.construct == "composite":
+        df = add_composite_pvs(df)
     print(f"loaded {len(df):,} rows, {len(df.columns)} columns")
     if a.subset == "workers":
         if "EARNFLAGC2" not in df.columns or "AGEG10LFS" not in df.columns:
@@ -93,12 +105,18 @@ def main():
                "strata_skipped": skipped,
                "lit": kappa_by_stratum(df, proxy, PV_LIT, strata),
                "num": kappa_by_stratum(df, proxy, PV_NUM, strata)}
+    if a.construct == "composite":
+        payload["construct"] = "composite: plausible value k is the mean of PVLIT k and PVNUM k"
+        payload["composite"] = kappa_by_stratum(df, proxy, PV_COMPOSITE, strata)
     sexcol = resolve_column(df, "GENDER_R")
     if sexcol and df[sexcol].nunique(dropna=True) > 1:
         payload["lit"]["sex_difference"] = kappa_sex_difference(
             df, proxy, PV_LIT, sex_col=sexcol)
         payload["num"]["sex_difference"] = kappa_sex_difference(
             df, proxy, PV_NUM, sex_col=sexcol)
+        if a.construct == "composite":
+            payload["composite"]["sex_difference"] = kappa_sex_difference(
+                df, proxy, PV_COMPOSITE, sex_col=sexcol)
     write_json(a.out, payload)
     k = payload["lit"]["overall"]
     if k["kappa"] is None:
@@ -111,7 +129,15 @@ def main():
     k = payload["num"]["overall"]
     print(f"kappa(proxy={proxy}, numeracy) overall = {k['kappa']:.4f}"
           f" (rho {k['rho']:.4f}, se {k['se']:.4f})")
-    for skill in ("lit", "num"):
+    if a.construct == "composite":
+        k = payload["composite"]["overall"]
+        print(f"kappa(proxy={proxy}, composite) overall = {k['kappa']:.4f}"
+              f" (rho {k['rho']:.4f}, se {k['se']:.4f})")
+        for label, key in (("men", "1"), ("women", "2")):
+            ks = payload["composite"].get("sex", {}).get(key)
+            if ks and ks.get("kappa") is not None:
+                print(f"kappa(composite, {label}) = {ks['kappa']:.4f} (se {ks['se']:.4f}, n {ks['n']:,})")
+    for skill in (("lit", "num", "composite") if a.construct == "composite" else ("lit", "num")):
         d = payload[skill].get("sex_difference")
         if d and d.get("difference") is not None:
             print(f"sex difference ({skill}, {d['convention']}): "
