@@ -149,8 +149,8 @@ Every cell file under `results/` carries `config_hash` (a SHA-256 prefix of the 
 
 The scripts in `paper/` read the run logs under `results/` only and write nothing into that folder. Run them from the repository root; each defaults to `results/` for the run logs and to `paper/` for its outputs.
 
-- `paper/verify_numbers.py [results_dir]` checks every number quoted in the main text against the run logs and ends with a count of checks and failures (197 checks, 0 failed on the released logs).
-- `paper/build_si_tables.py [results_dir] [out_dir]` writes the supplementary tables `paper/tables/S1.tex` to `S10B.tex` and `paper/si_numbers.json`, every scalar the Supplementary Note quotes. The released `tables/` and `si_numbers.json` are the copies used for the submitted manuscript; a rebuild reproduces the tables exactly and the JSON to within floating-point rounding (largest relative difference below 1e-12).
+- `paper/verify_numbers.py [results_dir]` checks every number quoted in the main text against the run logs and ends with a count of checks and failures (283 checks, 0 failed on the released logs).
+- `paper/build_si_tables.py [results_dir] [out_dir]` writes the supplementary tables `paper/tables/S1.tex` to `S15.tex` (with `S5B`, `S10B`, `S13B` and `S13C`) and `paper/si_numbers.json`, every scalar the Supplementary Note quotes. The released `tables/` and `si_numbers.json` are the copies used for the submitted manuscript; a rebuild reproduces the tables exactly and the JSON to within floating-point rounding (largest relative difference below 1e-12).
 - `paper/build_si.py` writes `paper/si.tex`, the Supplementary Note with every number substituted from `paper/si_numbers.json` and the tables.
 - `paper/fig5_meanerror.py [results_dir] [out_stem]` draws figure 5 from the mean-error summaries (needs matplotlib, listed in `requirements-dev.txt`).
 

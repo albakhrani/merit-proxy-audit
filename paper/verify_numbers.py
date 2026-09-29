@@ -103,7 +103,9 @@ v = PV["lit"]["all"]["years_noage"]
 check("women lead 0.367 (0.053)", 0.367, v["dxbar"]["point"], 3, "round"); check("lead se 0.053", 0.053, v["dxbar"]["se"], 3, "round")
 check("benchmark +13.3 (2.2)", 13.3, v["benchmark"]["point"], 1, "round"); check("benchmark se 2.2", 2.2, v["benchmark"]["se"], 1, "round")
 check("coefficient +0.10 (2.14)", 0.10, v["b_female"]["point"], 2, "round"); check("coef se 2.14", 2.14, v["b_female"]["se"], 2, "round")
-check("fifth of a sd: benchmark / pv_sd about 0.2", 0.21, v["benchmark"]["point"] / v["pv_sd"]["point"], 0.02)
+check("0.21 of the plausible-value sd", 0.21, v["benchmark"]["point"] / v["pv_sd"]["point"], 2, "round"); check("pv sd 63.7", 63.7, v["pv_sd"]["point"], 1, "round")
+check("abstract: a fifth of a sd (0.21 rounds to 0.2)", 0.2, v["benchmark"]["point"] / v["pv_sd"]["point"], 1, "round")
+check("survey earners lead 0.615", 0.615, PV["lit"]["workers"]["years_noage"]["dxbar"]["point"], 3, "round")
 check("difference -13.2 (3.3)", -13.2, v["difference"]["point"], 1, "round"); check("difference se 3.3", 3.3, v["difference"]["se"], 1, "round"); check("z -3.97", -3.97, v["difference"]["z"], 2, "round")
 n = PV["num"]["all"]["years_noage"]
 check("numeracy coef -11.9 (2.3)", -11.9, n["b_female"]["point"], 1, "round"); check("num coef se 2.3", 2.3, n["b_female"]["se"], 1, "round"); check("num benchmark +12.1 (2.0)", 12.1, n["benchmark"]["point"], 1, "round"); check("num benchmark se 2.0", 2.0, n["benchmark"]["se"], 1, "round")
@@ -147,6 +149,13 @@ check("neutral at 0.214", 0.214, (U1 - a0) / b, 3, "round"); check("workers neut
 check("gap closes at 0.855", 0.855, -a0 / b, 3, "round"); check("workers closes at 1.245", 1.245, -a0w / bw, 3, "round")
 check("per-market closing min 0.635", 0.635, float(pmz.min()), 3, "round"); check("per-market closing max 1.356", 1.356, float(pmz.max()), 3, "round")
 check("above numeracy estimate in 250", 250, int((pmz > 0.560).sum()), kind="count"); check("above upper bound in all but twelve (238)", 238, int((pmz > 0.694).sum()), kind="count")
+_first = sorted(MS["arms"].items(), key=lambda kv: kv[1]["delta_years"])[0][1]["covsets"]["premarket"]
+_order = [mk["market"] for mk in _first["markets"]]; _run = {mk["market"]: mk["U_mk"] for mk in MS["arms"]["num_hi"]["covsets"]["premarket"]["markets"]}
+_dis = {m: _run[m] for m, z in zip(_order, pmz) if (_run[m] < 0) != (z > 0.694)}
+check("fit and run disagree in three markets at 0.694", 3, len(_dis), kind="count")
+check("the three are AK 2018, HI 2019, PA 2019", "AK 2018, HI 2019, PA 2019", ", ".join(sorted(_dis)), kind="text")
+check("gap at 0.694 within 0.004 of zero in those three (ceiling)", True, max(abs(v) for v in _dis.values()) <= 0.004, kind="text")
+check("uncorrected residual interval excludes zero in 250 (Note A.8)", 250, sum(B2[m]["intervals"]["uncorrected_residual"]["hi"] < 0 for m in markets), kind="count")
 check("women lead 0.247 years (all, premarket)", 0.247, SL["summary"]["premarket_years"]["mean"], 3, "round"); check("women lead 0.469 (earners)", 0.469, SL25["summary"]["premarket_years"]["mean"], 3, "round")
 rule = []
 for summ, sl_ in ((MS, SL), (MW, SL25)):
@@ -234,11 +243,101 @@ check("occ gap -0.168 at 0.35", -0.168, float(np.mean(at35)), 3, "round"); check
 ratios = np.array([s["delta_merit"] / s["delta_label"] for s in allspecs if s["covariate_set"] == "extended"])
 check("extended absorb median 32 per cent", 32, round(100 * float(np.median(ratios))), kind="count")
 
+print("== Review computations R14 to R18 (28 September 2026)")
+RS = json.load(open(os.path.join(R, "replicate_se.json"))); rs = RS["summary"]
+check("replicate SE ratio median, unexplained, 1.2", 1.2, rs["ratio_replicate_se_over_bootstrap_se"]["unexplained"]["median"], 1, "round")
+check("replicate SE ratio median, corrected, 1.2", 1.2, rs["ratio_replicate_se_over_bootstrap_se"]["corrected_unexplained"]["median"], 1, "round")
+check("replicate SE ratio median, deepening, 1.1", 1.1, rs["ratio_replicate_se_over_bootstrap_se"]["deepening"]["median"], 1, "round")
+check("corrected excludes zero at 1.96 replicate SE in 250", 250, int(sum(1 for m in RS["markets"].values() if abs(m["point"]["corrected_unexplained"]) > 1.96 * m["replicate_se"]["corrected_unexplained"])), kind="count")
+check("deepening excludes zero at 1.96 replicate SE in 244", 244, int(sum(1 for m in RS["markets"].values() if abs(m["point"]["deepening"]) > 1.96 * m["replicate_se"]["deepening"])), kind="count")
+_b1c = sum(1 for m in markets if B1[m]["intervals"]["corrected_residual"]["hi"] < 0); _b1d = sum(1 for m in markets if B1[m]["intervals"]["deepening"]["hi"] < 0)
+check("no count changes by more than one market (Discussion): max |replicate - bootstrap| count difference", True, max(abs(250 - _b1c), abs(244 - _b1d)) <= 1, kind="text")
+check("negative replicate weights 0.001 per cent (Methods, rounded)", 0.001, 100.0 * rs["negative_replicate_weights_clipped_total"] / (80 * sum(m["n"] for m in RS["markets"].values())), 3, "round")
+check("80 replicate weights", 80, RS["n_replicates"], kind="count"); check("full-weight points equal the bootstrap points in 250", 250, rs["point_matches_bootstrap_point"], kind="count")
+MP = json.load(open(os.path.join(R, "meanerror_summary_prop.json"))); MPW = json.load(open(os.path.join(R, "meanerror_summary_prop_workers.json")))
+for summ, tag, share, shift, val, lo_, hi_, neg in ((MP, "prop_lit", 0.807, 0.199, -0.467, -0.481, -0.452, 250), (MP, "prop_num", 1.523, 0.376, -0.342, -0.365, -0.320, 249),
+                                                    (MPW, "prop_lit_workers", 0.944, 0.443, -0.422, -0.443, -0.404, 250), (MPW, "prop_num_workers", 1.417, 0.665, -0.306, -0.332, -0.282, 249)):
+    a = summ["arms"][tag]; cv = a["covsets"]["premarket"]; p = cv["pooled"]["U_mk"]
+    check(f"{tag} share {share}", share, a["share_of_schooling_lead"], 3, "round"); check(f"{tag} mean shift {shift}", shift, cv["pooled"]["applied_shift_years"]["mean"], 3, "round")
+    check(f"{tag} pooled {val}", val, p["mean"], 3, "round"); check(f"{tag} lo {lo_}", lo_, p["ci_lo"], 3, "round"); check(f"{tag} hi {hi_}", hi_, p["ci_hi"], 3, "round")
+    check(f"{tag} negative at anchor {neg}", neg, cv["U_m_anchor_negative"], kind="count")
+_sh = {k: PV[s][m]["years_noage"]["delta_proxy_units"]["point"] / PV[s][m]["years_noage"]["dxbar"]["point"] for k, s, m in (("lit_all", "lit", "all"), ("num_all", "num", "all"), ("lit_w", "lit", "workers"), ("num_w", "num", "workers"))}
+check("share = delta / survey lead (lit all) equals the share used", True, abs(_sh["lit_all"] - MP["arms"]["prop_lit"]["share_of_schooling_lead"]) < 1e-6, kind="text")
+check("share (num all)", True, abs(_sh["num_all"] - MP["arms"]["prop_num"]["share_of_schooling_lead"]) < 1e-6, kind="text")
+check("share (lit earners)", True, abs(_sh["lit_w"] - MPW["arms"]["prop_lit_workers"]["share_of_schooling_lead"]) < 1e-6, kind="text")
+check("share (num earners)", True, abs(_sh["num_w"] - MPW["arms"]["prop_num_workers"]["share_of_schooling_lead"]) < 1e-6, kind="text")
+KC = json.load(open(os.path.join(R, "kappa_composite.json"))); PVC = json.load(open(os.path.join(R, "piaac_validity_composite.json")))["specs"]["composite"]; MC = json.load(open(os.path.join(R, "meanerror_summary_composite.json")))
+check("composite reliability 0.216", 0.216, KC["composite"]["overall"]["kappa"], 3, "round"); check("composite reliability se 0.017", 0.017, KC["composite"]["overall"]["se"], 3, "round")
+check("composite delta 0.429", 0.429, PVC["all"]["years_noage"]["delta_proxy_units"]["point"], 3, "round"); check("composite delta se 0.068", 0.068, PVC["all"]["years_noage"]["delta_proxy_units"]["se"], 3, "round")
+_c = MC["arms"]["composite"]["covsets"]["premarket"]; check("composite gap -0.323", -0.323, _c["pooled"]["U_mk"]["mean"], 3, "round"); check("composite lo -0.339", -0.339, _c["pooled"]["U_mk"]["ci_lo"], 3, "round"); check("composite hi -0.306", -0.306, _c["pooled"]["U_mk"]["ci_hi"], 3, "round")
+check("composite negative in all 250", 250, _c["U_m_anchor_negative"], kind="count")
+check("composite arm delta equals the validity estimate", True, abs(MC["arms"]["composite"]["delta_years"] - PVC["all"]["years_noage"]["delta_proxy_units"]["point"]) < 5e-7, kind="text")
+DS = json.load(open(os.path.join(R, "dummies_summary.json")))
+check("indicators: difference -0.002 pooled", -0.002, DS["pooled"]["difference_from_linear"]["mean"], 3, "round")
+check("indicators: at most 0.036 in any market (ceiling)", True, max(abs(DS["pooled"]["difference_from_linear"]["min"]), abs(DS["pooled"]["difference_from_linear"]["max"])) <= 0.036, kind="text")
+check("indicators: unexplained negative in 250", 250, DS["counts"]["unexplained_negative"], kind="count")
+GS = json.load(open(os.path.join(R, "groupref_summary.json")))
+check("group reference: male +0.007", 0.007, GS["pooled"]["male_ref_sexspecific_minus_common"]["mean"], 3, "round"); check("group reference: female -0.013", -0.013, GS["pooled"]["female_ref_sexspecific_minus_common"]["mean"], 3, "round")
+_mv = max(abs(GS["pooled"][k][e]) for k in ("male_ref_sexspecific_minus_common", "female_ref_sexspecific_minus_common") for e in ("min", "max"))
+check("group reference: at most 0.039 in any market (ceiling)", True, _mv <= 0.039, kind="text")
+check("group reference: negative in all 250 under both references (corrected, both anchors)", 1000, sum(GS["counts"][k] for k in ("male_ref_corrected_common_negative", "male_ref_corrected_sexspecific_negative", "female_ref_corrected_common_negative", "female_ref_corrected_sexspecific_negative")), kind="count")
+GRc = load_dir("grid_groupref"); check("group-reference arm reproduces the pooled-reference grid values", 250, sum(1 for m in markets if abs(GRc[m]["unexplained"]["pooled_ref_corrected"] - spec(G[m], "acs50k", "premarket", "logistic")["eiv_unexplained_at_kappa"]) < 1e-9), kind="count")
+# the ledger lives in study2lib/specs.py, beside results/
+_spec = next((c for c in (os.path.join(R, "..", "study2lib", "specs.py"), os.path.join(R, "..", "..", "review_runs", "study2lib", "specs.py")) if os.path.exists(c)), None)
+if _spec:
+    _txt = open(_spec, encoding="utf-8").read(); _i = _txt.find("REGISTERED_CHANGES = ["); _blk = _txt[_i:_txt.find("\n]", _i)]
+    check("ledger: nineteen entries (Methods)", 19, _blk.count('"date"'), kind="count")
+    check("ledger: five entries dated 2026-09-28 (Methods)", 5, _blk.count('"2026-09-28"'), kind="count")
+    check("ledger: ten entries dated 22 to 25 September (Methods)", 10, sum(_blk.count(f'"2026-09-{d}"') for d in ("22", "23", "24", "25")), kind="count")
+else:
+    print("   note: specs.py not found; ledger counts not checked here")
+
+print("== Independent review fixes (28 September, evening)")
+# Berkson-consistent adjustment: exact linearity of the mean-error-only shift, then U_y1 + shift * b1 per market
+_b1 = {}
+for tag, a_ in MS["arms"].items():
+    for mk in a_["covsets"]["premarket"]["markets"]:
+        _b1.setdefault(mk["market"], []).append(mk["meanerror_shift"] / a_["delta_years"])
+check("mean-error-only shift is exactly linear in delta (spread < 1e-9)", True, max(max(v) - min(v) for v in _b1.values()) < 1e-9, kind="text")
+_b1 = {m: float(np.mean(v)) for m, v in _b1.items()}; _Uy1 = {mk["market"]: mk["U_y1"] for mk in MS["arms"]["lit"]["covsets"]["premarket"]["markets"]}
+_vn = PV["num"]["all"]["years_noage"]; _dBn = -_vn["b_female"]["point"] / _vn["b_x"]["point"]; _UBn = {m: _Uy1[m] + _dBn * _b1[m] for m in _Uy1}
+_vl = PV["lit"]["all"]["years_noage"]; _dBl = -_vl["b_female"]["point"] / _vl["b_x"]["point"]; _UBl = {m: _Uy1[m] + _dBl * _b1[m] for m in _Uy1}
+check("Berkson shift for numeracy 1.2 years", 1.2, _dBn, 1, "round"); check("Berkson shift for literacy next to nothing (|shift| < 0.02)", True, abs(_dBl) < 0.02, kind="text")
+check("Berkson-adjusted pooled gap -0.30 (numeracy)", -0.30, float(np.mean(list(_UBn.values()))), 2, "round")
+check("Berkson-adjusted gap negative in every market (numeracy)", 250, sum(u < 0 for u in _UBn.values()), kind="count"); check("Berkson-adjusted gap negative in every market (literacy)", 250, sum(u < 0 for u in _UBl.values()), kind="count")
+check("female coefficient -11.9 for numeracy (Results, Berkson sentence)", -11.9, _vn["b_female"]["point"], 1, "round")
+# at 0.694 on the premarket set: 15 markets at or above zero, none by more than 0.056
+_nh = MS["arms"]["num_hi"]["covsets"]["premarket"]
+check("15 markets at or above zero at 0.694", 15, sum(1 for mk in _nh["markets"] if mk["U_mk"] >= 0), kind="count"); check("none above 0.056 (ceiling)", True, _nh["pooled"]["U_mk"]["max"] <= 0.056, kind="text")
+# the interval bounds carried into the arm are the estimate plus and minus two standard errors, at three decimals
+check("literacy lower bound = 0.297 - 2 x 0.069", 0.159, round(0.297 - 2 * 0.069, 3), 3, "round"); check("literacy upper bound = 0.297 + 2 x 0.069", 0.435, round(0.297 + 2 * 0.069, 3), 3, "round"); check("numeracy upper bound = 0.560 + 2 x 0.067", 0.694, round(0.560 + 2 * 0.067, 3), 3, "round")
+check("arms were run at those values", [0.159, 0.297, 0.435, 0.560, 0.694], sorted(round(a_["delta_years"], 3) for a_ in MS["arms"].values()), kind="text")
+check("numeracy arm not bootstrapped (no boot_meanerror_num folder)", False, os.path.isdir(os.path.join(R, "boot_meanerror_num")), kind="text")
+# along the sweep only reliabilities at or below 0.20 bring any market to zero, and only under the numeracy structures
+def _sweep_neg(d):
+    out = {}
+    for f in glob.glob(os.path.join(R, d, "*.json")):
+        c = json.load(open(f)); s = spec(c, "acs50k", "premarket")
+        for k in s["kappa_sweep"]:
+            out.setdefault(round(k["kappa"], 2), []).append(k["unexplained"] < 0)
+    return {k: sum(v) for k, v in out.items()}
+_sw = {d: _sweep_neg(d) for d in ("grid_meanerror_lit_lo", "grid_meanerror_lit", "grid_meanerror_lit_hi", "grid_meanerror_num", "grid_meanerror_num_hi", "grid_meanerror_lit_workers", "grid_meanerror_num_workers")}
+check("literacy structures: all 250 negative at every swept reliability", True, all(v == 250 for d in ("grid_meanerror_lit_lo", "grid_meanerror_lit", "grid_meanerror_lit_hi", "grid_meanerror_lit_workers") for v in _sw[d].values()), kind="text")
+check("numeracy structures: all 250 negative from 0.25 upwards", True, all(v == 250 for d in ("grid_meanerror_num", "grid_meanerror_num_hi", "grid_meanerror_num_workers") for k, v in _sw[d].items() if k >= 0.25), kind="text")
+check("numeracy structures: some market at or above zero at 0.15 or 0.20", True, any(v < 250 for d in ("grid_meanerror_num", "grid_meanerror_num_hi", "grid_meanerror_num_workers") for k, v in _sw[d].items() if k <= 0.20), kind="text")
+# Utah: men's mean attainment code exceeds women's in exactly three markets (attainment coding); four under the years coding
+check("men lead in attainment code in 3 markets", 3, sum(1 for v in SL["markets"].values() if v["premarket"]["code"]["lead_women_minus_men"] < 0), kind="count")
+check("men lead in years in 4 markets", 4, sum(1 for v in SL["markets"].values() if v["premarket"]["years"]["lead_women_minus_men"] < 0), kind="count")
+_anch = [la["kappa"], na["kappa"], lw["kappa"], nw["kappa"]]
+check("about a fifth to a quarter: smallest anchor within 0.02 of 0.20 and largest within 0.03 of 0.25", True, abs(min(_anch) - 0.20) <= 0.02 and abs(max(_anch) - 0.25) <= 0.03, kind="text")
+
 print("== Introduction and abstract")
 check("0.19 lit all", 0.19, la["kappa"], 2, "round"); check("0.23 num all", 0.23, na["kappa"], 2, "round"); check("0.24 lit earners", 0.24, lw["kappa"], 2, "round"); check("0.28 num earners", 0.28, nw["kappa"], 2, "round")
 check("-0.46 to -0.63", -0.46, PG["uncorrected_residual"]["mean"], 2, "round"); check("-0.63", -0.63, PG["corrected_residual"]["mean"], 2, "round")
 check("-0.40 lit", -0.40, P(MS, "lit", "premarket", "U_mk")["mean"], 2, "round"); check("-0.21 num", -0.21, P(MS, "num", "premarket", "U_mk")["mean"], 2, "round")
 check("closing is about 2.9 times the literacy estimate", 2.9, (-a0 / b) / PV["lit"]["all"]["years_noage"]["delta_proxy_units"]["point"], 0.1)
+check("closing / numeracy estimate, full sample, rounds to 1.5", 1.5, (-a0 / b) / PV["num"]["all"]["years_noage"]["delta_proxy_units"]["point"], 1, "round")
+check("closing / numeracy estimate, earners, rounds to 1.4", 1.4, (-a0w / bw) / PV["num"]["workers"]["years_noage"]["delta_proxy_units"]["point"], 1, "round")
 print("   ratios: full-sample closing / lit 0.297 = %.2f; / num 0.560 = %.2f; earners closing / lit 0.580 = %.2f; / num 0.871 = %.2f" % ((-a0 / b) / 0.297, (-a0 / b) / 0.560, (-a0w / bw) / 0.580, (-a0w / bw) / 0.871))
 check("(1-kappa)/kappa about 4.4 at the anchor", 4.4, (1 - ANCHOR) / ANCHOR, 1, "round")
 check("women lead in 247 of 250 (code units)", 247, sum(1 for v in lead_code.values() if v > 0), kind="count")

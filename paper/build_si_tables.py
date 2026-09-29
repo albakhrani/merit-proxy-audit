@@ -143,6 +143,11 @@ for k, v in (("covset_premarket", rate("covariate_set", "premarket")), ("covset_
              ("outcome_acs50k", rate("outcome_def", "acs50k")), ("learner_tabpfn", rate("learner", "tabpfn"))):
     assert abs(hv[k] - v) < 1e-12, k
 NUM["S4_R_positive_all_specs"] = sum(1 for s in allspecs if s["R"] > 0)
+# per-market share of the twelve specifications showing the strict pattern: exactly one half in most markets
+_share = {m: np.mean([strict(s) for s in G[m]["spec_results"]]) for m in markets}
+NUM["S4_markets_share_exactly_half"] = int(sum(1 for v in _share.values() if abs(v - 0.5) < 1e-9))
+NUM["S4_markets_share_within_005_of_half"] = int(sum(1 for v in _share.values() if abs(v - 0.5) <= 0.05 + 1e-9))
+NUM["S4_share_min"], NUM["S4_share_max"] = float(min(_share.values())), float(max(_share.values()))
 write("S4", "Dimension & Level & Strict verdict rate", rows, "@{}lll@{}")
 
 # harmonised-arm rates quoted in the main text
@@ -198,16 +203,19 @@ ver = next(iter(G.values()))["versions"]
 hashes = {}
 for d in ("grid", "grid_h", "boot_primary", "boot_primary_v2", "boot_meanerror_lit", "grid_years", "grid_years_age2565",
           "grid_meanerror_lit", "grid_meanerror_lit_lo", "grid_meanerror_lit_hi", "grid_meanerror_num", "grid_meanerror_num_hi",
-          "grid_meanerror_lit_workers", "grid_meanerror_num_workers", "grid_wage", "grid_adjinc", "grid_wmedian", "grid_age2565", "grid_occ", "grid_exact"):
+          "grid_meanerror_lit_workers", "grid_meanerror_num_workers", "grid_wage", "grid_adjinc", "grid_wmedian", "grid_age2565", "grid_occ", "grid_exact",
+          "grid_prop_lit", "grid_prop_num", "grid_prop_lit_workers", "grid_prop_num_workers", "grid_meanerror_composite", "grid_groupref", "grid_dummies"):
     hs = {json.load(open(f))["config_hash"] for f in glob.glob(os.path.join(R, d, "*.json"))}
     assert len(hs) == 1, (d, hs)
     hashes[d] = hs.pop()
-for f in ("pooled_gap.json", "piaac_validity.json", "schooling_lead.json", "schooling_lead_age2565.json", "meanerror_summary.json", "meanerror_summary_workers.json"):
+for f in ("pooled_gap.json", "piaac_validity.json", "schooling_lead.json", "schooling_lead_age2565.json", "meanerror_summary.json", "meanerror_summary_workers.json",
+          "piaac_validity_composite.json", "meanerror_summary_prop.json", "meanerror_summary_prop_workers.json", "meanerror_summary_composite.json",
+          "replicate_se.json", "groupref_summary.json", "dummies_summary.json"):
     hashes[f] = json.load(open(os.path.join(R, f)))["config_hash"]
 rows = [["Python", ver["python"]], ["Platform", ver["platform"]], ["NumPy", ver["numpy"]], ["pandas", ver["pandas"]], ["SciPy", ver["scipy"]],
         ["scikit-learn", ver["sklearn"]], ["XGBoost", ver["xgboost"]], ["TabPFN", ver["tabpfn"]], ["PyTorch", ver["torch"]], ["folktables", ver["folktables"]],
         ["Primary seed", str(next(iter(G.values()))["seed"])], ["TabPFN weights", next(iter(G.values()))["tabpfn_model_version"]],
-        ["Configuration hash, registered grid", hashes["grid"]], ["Harmonised arm", hashes["grid_h"]], ["Bootstrap, registered", hashes["boot_primary"]],
+        ["Configuration hash, main grid", hashes["grid"]], ["Harmonised arm", hashes["grid_h"]], ["Bootstrap, version 1", hashes["boot_primary"]],
         ["Bootstrap, version 2", hashes["boot_primary_v2"]], ["Bootstrap, mean-error arm (literacy)", hashes["boot_meanerror_lit"]],
         ["Years-coded arm, all adults", hashes["grid_years"]],
         ["Mean-error arm, literacy 0.297", hashes["grid_meanerror_lit"]], ["Mean-error arm, literacy lower bound 0.159", hashes["grid_meanerror_lit_lo"]],
@@ -218,7 +226,12 @@ rows = [["Python", ver["python"]], ["Platform", ver["platform"]], ["NumPy", ver[
         ["Wage arm", hashes["grid_wage"]], ["Real-dollar arm", hashes["grid_adjinc"]], ["Weighted cell median arm", hashes["grid_wmedian"]],
         ["Ages 25 to 65 arm", hashes["grid_age2565"]], ["Occupation arm", hashes["grid_occ"]], ["Exact-anchor check", hashes["grid_exact"]],
         ["Pooled gap", hashes["pooled_gap.json"]], ["Validity test", hashes["piaac_validity.json"]],
-        ["Schooling leads, all adults; earners", f"{hashes['schooling_lead.json']}; {hashes['schooling_lead_age2565.json']}"]]
+        ["Schooling leads, all adults; earners", f"{hashes['schooling_lead.json']}; {hashes['schooling_lead_age2565.json']}"],
+        ["Proportional arms, all adults: literacy share; numeracy share", f"{hashes['grid_prop_lit']}; {hashes['grid_prop_num']}"],
+        ["Proportional arms, earners: literacy share; numeracy share", f"{hashes['grid_prop_lit_workers']}; {hashes['grid_prop_num_workers']}"],
+        ["Composite arm; composite validity test", f"{hashes['grid_meanerror_composite']}; {hashes['piaac_validity_composite.json']}"],
+        ["Group-reference arm; indicator arm", f"{hashes['grid_groupref']}; {hashes['grid_dummies']}"],
+        ["Replicate-variance check", hashes["replicate_se.json"]]]
 NUM["hashes"] = hashes
 write("S6", "Item & Value", rows, "@{}ll@{}")
 
@@ -395,7 +408,53 @@ for summ, samp, anchor_lab in ((MS, "All adults, $\\kappa = 0.187$", "all"), (MW
             zero_cross[(anchor_lab, cs)]["n_above_numeracy"] = int((pm_zero > d_num).sum())
             zero_cross[(anchor_lab, cs)]["n_above_numeracy_upper"] = int((pm_zero > d_hi).sum())
             zero_cross[(anchor_lab, cs)]["n_below_num_workers"] = int((pm_zero < 0.871).sum())
+            # the direct run at the numeracy upper bound against the per-market fit: markets where the
+            # two disagree about the sign at that delta, with the run value there
+            run_hi = {mk["market"]: mk["U_mk"] for mk in MS["arms"]["num_hi"]["covsets"]["premarket"]["markets"]}
+            fit_neg = {m: z > d_hi for m, z in zip(per_market.keys(), pm_zero)}
+            disagree = {m: run_hi[m] for m in run_hi if (run_hi[m] < 0) != fit_neg[m]}
+            zero_cross[(anchor_lab, cs)]["n_run_negative_upper"] = int(sum(1 for v in run_hi.values() if v < 0))
+            zero_cross[(anchor_lab, cs)]["fit_run_disagree"] = disagree
+            zero_cross[(anchor_lab, cs)]["fit_run_disagree_max_abs"] = float(max(abs(v) for v in disagree.values())) if disagree else 0.0
+NUM["S8_leads"] = {s: {"point": PV["specs"]["lit"][s]["years_noage"]["dxbar"]["point"], "se": PV["specs"]["lit"][s]["years_noage"]["dxbar"]["se"]} for s in ("all", "workers")}
 NUM["S9_fits"] = {f"{k[0]}_{k[1]}": v for k, v in zero_cross.items()}
+# along the sweep: markets with a negative corrected gap at each swept reliability, premarket, per mean-error arm
+def sweep_negative(d):
+    out = {}
+    for f in glob.glob(os.path.join(R, d, "*.json")):
+        c = json.load(open(f)); s = spec(c, "acs50k", "premarket")
+        for k in s["kappa_sweep"]:
+            out.setdefault(f"{k['kappa']:.2f}", []).append(k["unexplained"] < 0)
+    return {k: int(sum(v)) for k, v in sorted(out.items())}
+NUM["S9_sweep_negative"] = {d: sweep_negative(d) for d in ("grid_meanerror_lit_lo", "grid_meanerror_lit", "grid_meanerror_lit_hi", "grid_meanerror_num", "grid_meanerror_num_hi",
+                                                          "grid_meanerror_lit_workers", "grid_meanerror_num_workers")}
+NUM["S9_lowest_kappa_all_negative"] = {d: min(float(k) for k, v in sc.items() if v == 250) for d, sc in NUM["S9_sweep_negative"].items()}
+NUM["S9_U_y1"] = {"all": MS["arms"]["lit"]["covsets"]["premarket"]["pooled"]["U_y1"]["mean"], "workers": MW["arms"]["lit_workers"]["covsets"]["premarket"]["pooled"]["U_y1"]["mean"]}
+# the interval bounds carried into the arm are the estimate plus and minus two standard errors
+_pv = PV["specs"]["lit"]["all"]["years_noage"]["delta_proxy_units"]; _pn = PV["specs"]["num"]["all"]["years_noage"]["delta_proxy_units"]
+NUM["S9_bound_multiplier"] = {"lit_lo": (_pv["point"] - MS["arms"]["lit_lo"]["delta_years"]) / _pv["se"], "lit_hi": (MS["arms"]["lit_hi"]["delta_years"] - _pv["point"]) / _pv["se"],
+                              "num_hi": (MS["arms"]["num_hi"]["delta_years"] - _pn["point"]) / _pn["se"], "num_lo_not_run": _pn["point"] - 2 * _pn["se"]}
+# the men-lead markets under the years coding (the shift is negative there in the proportional arm)
+NUM["S9_men_lead_years"] = sorted(m for m, v in SL["markets"].items() if v["premarket"]["years"]["lead_women_minus_men"] < 0)
+NUM["S9_men_lead_years_workers"] = sorted(m for m, v in SL25["markets"].items() if v["premarket"]["years"]["lead_women_minus_men"] < 0)
+# Berkson-consistent adjustment (Note A.8): under M* = X + eta the only adjustment is a mean shift of women's schooling by
+# -b_F / b_X years with no reliability step; lowering women's years by delta with the sex indicator in the regression moves the
+# uncorrected unexplained component by exactly delta times the uncorrected schooling return, so the per-market value is
+# U_y1 + delta_B * b1 with b1 read from the stored mean-error arms (meanerror_shift / delta, identical across the five arms)
+_b1 = {}
+for tag, a in MS["arms"].items():
+    for mk in a["covsets"]["premarket"]["markets"]:
+        _b1.setdefault(mk["market"], []).append(mk["meanerror_shift"] / a["delta_years"])
+assert max(max(v) - min(v) for v in _b1.values()) < 1e-9
+_b1 = {m: float(np.mean(v)) for m, v in _b1.items()}
+_Uy1 = {mk["market"]: mk["U_y1"] for mk in MS["arms"]["lit"]["covsets"]["premarket"]["markets"]}
+NUM["A8_berkson"] = {"b1_pooled": float(np.mean(list(_b1.values()))), "b1_min": min(_b1.values()), "b1_max": max(_b1.values()), "linearity_spread": float(max(max(v) - min(v) for v in [[mk["meanerror_shift"] / a["delta_years"] for a in MS["arms"].values() for mk in a["covsets"]["premarket"]["markets"] if mk["market"] == m] for m in _Uy1]))}
+for skill in ("lit", "num"):
+    v = PV["specs"][skill]["all"]["years_noage"]; dB = -v["b_female"]["point"] / v["b_x"]["point"]
+    UB = {m: _Uy1[m] + dB * _b1[m] for m in _Uy1}
+    NUM["A8_berkson"][skill] = {"shift_years": dB, "b_female": v["b_female"]["point"], "b_x": v["b_x"]["point"], "pooled": float(np.mean(list(UB.values()))), "negative": int(sum(u < 0 for u in UB.values())), "max": float(max(UB.values())), "min": float(min(UB.values()))}
+NUM["S9_pooled_premarket"] = {tag: {"mean": MS["arms"][tag]["covsets"]["premarket"]["pooled"]["U_mk"]["mean"], "max": MS["arms"][tag]["covsets"]["premarket"]["pooled"]["U_mk"]["max"],
+                                    "negative_at_anchor": MS["arms"][tag]["covsets"]["premarket"]["U_m_anchor_negative"]} for tag in MS["arms"]}
 write("S9", "$\\delta$ (years) & Pooled mean & 95 per cent interval & Market range & Neg. anchor & Neg. floor & Deepens", rows, "@{}lllllll@{}", colsep="2.5pt")
 # the sign rule: adjusted lead sign vs direction of the reliability step, per market and delta
 rule = {}
@@ -432,7 +491,7 @@ def arm_rows(d, lab, cs_list=("premarket", "extended"), anchor_key="eiv_unexplai
                                 "Uk": float(np.mean(Uk)) if Uk else None, "deepens": deep, "n_mean": float(np.mean(n))}
     return cells, out
 rows = []
-for d, lab in (("grid", "Registered grid"), ("grid_years", "Years-coded schooling"), ("grid_wage", "Wage, full-time"), ("grid_adjinc", "Real dollars"),
+for d, lab in (("grid", "Main grid"), ("grid_years", "Years-coded schooling"), ("grid_wage", "Wage, full-time"), ("grid_adjinc", "Real dollars"),
                ("grid_wmedian", "Weighted median"), ("grid_age2565", "Ages 25 to 65")):
     cells, rr = arm_rows(d, lab); rows += rr
     if d == "grid_years":
@@ -473,12 +532,126 @@ for kap in (0.35, 0.40, 0.50, 0.75, 1.0):
 NUM["S10_occ_admissible_sweep"] = adm
 NUM["S10_occ_R_mean_ext_grid"] = NUM["S10_grid_extended"]["R_mean"]
 rows = [["Threshold reliability, mean (state-block 95 per cent interval)", f"{fmt(thr.mean())} ({fmt(np.percentile(d2, 2.5))} to {fmt(np.percentile(d2, 97.5))})"],
-        ["Threshold, median and range across markets", f"{fmt(np.median(thr))}; {fmt(thr.min())} to {fmt(thr.max())}"],
-        ["Markets where the threshold exceeds the anchor of 0.187", f"{int((thr > ANCHOR).sum())} of 250"]]
+        ["Threshold, median and range across markets", f"{fmt(np.median(thr))}; {fmt(thr.min(), 4)} to {fmt(thr.max(), 4)}"],
+        ["Markets where the threshold exceeds the anchor of 0.1867", f"{int((thr > ANCHOR).sum())} of 250"]]
 for kap in ("0.35", "0.4", "0.5", "0.75", "1.0"):
     a = adm[kap]
     rows.append([f"Corrected gap at $\\kappa = {float(kap):.2f}$: markets defined; mean; negative", f"{a['defined']}; {fmt(a['mean']) if a['mean'] is not None else 'none'}; {a['negative']}"])
 write("S10B", "Quantity & Value", rows, "@{}p{9.5cm}p{5cm}@{}")
+
+# ---------------------------------------------------------------- S11 replicate-weight standard errors (review computation R16)
+RS = json.load(open(os.path.join(R, "replicate_se.json")))
+rs = RS["summary"]
+assert rs["n_markets"] == 250 and RS["n_replicates"] == 80 and rs["point_matches_bootstrap_point"] == 250
+rows = []
+labels = {"raw": "Raw gap", "explained": "Explained", "unexplained": "Unexplained", "corrected_unexplained": "Corrected unexplained", "deepening": "Deepening"}
+excl_all = {}
+for q in ("raw", "explained", "unexplained", "corrected_unexplained", "deepening"):
+    se = rs["replicate_se"][q]
+    ratio = rs["ratio_replicate_se_over_bootstrap_se"].get(q)
+    excl_all[q] = int(sum(1 for m in RS["markets"].values() if abs(m["point"][q]) > 1.96 * m["replicate_se"][q]))
+    if q in rs["excludes_zero_at_1_96_replicate_se"]:
+        assert excl_all[q] == rs["excludes_zero_at_1_96_replicate_se"][q], q
+    rows.append([labels[q], f"{fmt(se['median'], 4)} ({fmt(se['min'], 4)} to {fmt(se['max'], 4)})",
+                 f"{fmt(ratio['median'], 2)} ({fmt(ratio['min'], 2)} to {fmt(ratio['max'], 2)})" if ratio else "no bootstrap interval",
+                 str(excl_all[q])])
+write("S11", "Quantity & Replicate SE, median (range) & Ratio to bootstrap SE (range) & Excludes zero", rows, "@{}llll@{}", colsep="3pt")
+NUM["S11_replicate"] = {"ratio": rs["ratio_replicate_se_over_bootstrap_se"], "excl": excl_all,
+                        "clipped_total": rs["negative_replicate_weights_clipped_total"], "markets_with_clipped": int(sum(1 for m in RS["markets"].values() if m["negative_replicate_weights_clipped"] > 0)),
+                        "entries_total": int(sum(m["n"] for m in RS["markets"].values()) * 80), "point_matches": rs["point_matches_bootstrap_point"]}
+NUM["S11_replicate"]["clipped_share_pct"] = 100.0 * NUM["S11_replicate"]["clipped_total"] / NUM["S11_replicate"]["entries_total"]
+# the bootstrap counts the replicate check is compared with (version 1 percentile intervals, as the check itself uses)
+NUM["S11_boot_excl"] = {"corrected_unexplained": int(sum(1 for m in markets if B1[m]["intervals"]["corrected_residual"]["hi"] < 0)),
+                        "deepening": int(sum(1 for m in markets if B1[m]["intervals"]["deepening"]["hi"] < 0))}
+
+# ---------------------------------------------------------------- S12 proportional error difference (R14)
+MP = json.load(open(os.path.join(R, "meanerror_summary_prop.json"))); MPW = json.load(open(os.path.join(R, "meanerror_summary_prop_workers.json")))
+rows = []; NUM["S12_prop"] = {}
+for summ, samp, key in ((MP, "All adults, $\\kappa = 0.187$", "all"), (MPW, "Earners 25 to 65, $\\kappa = 0.243$", "workers")):
+    for cs in ("premarket", "extended"):
+        rows.append(f"{samp}, {cs} covariates")
+        first = next(iter(summ["arms"].values()))["covsets"][cs]; p0 = first["pooled"]["U_yk"]
+        rows.append(["0 (classical)", "", fmt(p0["mean"]), f"{fmt(p0['ci_lo'])} to {fmt(p0['ci_hi'])}", f"{fmt(p0['min'])} to {fmt(p0['max'])}",
+                     str(sum(1 for mk in first["markets"] if mk["U_yk"] < 0)), str(sum(1 for mk in first["markets"] if mk["sweep_y_max"] < 0))])
+        for tag, arm in sorted(summ["arms"].items(), key=lambda kv: kv[1]["share_of_schooling_lead"]):
+            cv = arm["covsets"][cs]; p = cv["pooled"]["U_mk"]; sh = cv["pooled"]["applied_shift_years"]
+            lab = "literacy" if "lit" in tag else "numeracy"
+            rows.append([f"{arm['share_of_schooling_lead']:.3f} ({lab})", f"{fmt(sh['mean'])} ({fmt(sh['min'])} to {fmt(sh['max'])})", fmt(p["mean"]),
+                         f"{fmt(p['ci_lo'])} to {fmt(p['ci_hi'])}", f"{fmt(p['min'])} to {fmt(p['max'])}", str(cv["U_m_anchor_negative"]), str(cv["U_m_floor_negative"])])
+            NUM["S12_prop"][f"{key}_{cs}_{lab}"] = {"share": arm["share_of_schooling_lead"], "shift_mean": sh["mean"], "shift_min": sh["min"], "shift_max": sh["max"],
+                                                     "mean": p["mean"], "ci": [p["ci_lo"], p["ci_hi"]], "min": p["min"], "max": p["max"],
+                                                     "neg_anchor": cv["U_m_anchor_negative"], "neg_floor": cv["U_m_floor_negative"], "flips": cv["U_m_sign_flips_in_sweep"],
+                                                     "positive_markets": [mk["market"] for mk in cv["markets"] if mk["U_mk"] > 0],
+                                                     "lead_mean": cv["pooled"]["schooling_lead_years"]["mean"], "n_men_lead": int(sum(1 for mk in cv["markets"] if mk["schooling_lead_years"] < 0))}
+write("S12", "Share of lead & Shift, years (range) & Pooled mean & 95 per cent interval & Market range & Neg. anchor & Neg. floor", rows, "@{}lllllll@{}", colsep="2.5pt")
+
+# ---------------------------------------------------------------- S13 composite construct (R15)
+KC = json.load(open(os.path.join(R, "kappa_composite.json"))); KCW = json.load(open(os.path.join(R, "kappa_composite_workers.json")))
+PVC = json.load(open(os.path.join(R, "piaac_validity_composite.json")))["specs"]["composite"]
+MC = json.load(open(os.path.join(R, "meanerror_summary_composite.json")))
+assert abs(KC["lit"]["overall"]["kappa"] - ANCHOR) < 1e-12  # the composite file recomputes the literacy anchor and must reproduce it
+rows = []
+for kc, samp in ((KC, "All adults, 16 to 65"), (KCW, "Earners, 25 to 65")):
+    c = kc["composite"]; o = c["overall"]; d = c["sex_difference"]
+    rows.append([samp, f"{fmt(o['kappa'])} ({fmt(o['kappa'] - 1.96 * o['se'])}, {fmt(o['kappa'] + 1.96 * o['se'])})", f"{fmt(c['sex']['1']['kappa'])} ({fmt(c['sex']['1']['se'])})",
+                 f"{fmt(c['sex']['2']['kappa'])} ({fmt(c['sex']['2']['se'])})", f"{fmt(d['difference'], 3, True)} ({fmt(d['se'])}), $z = {d['z']:.2f}$", n_fmt(o["n"])])
+write("S13", "Sample & Overall (95 per cent CI) & Men (SE) & Women (SE) & Men minus women (SE), $z$ & $n$", rows, "@{}llllll@{}", colsep="2pt")
+rows = []
+for samp, lab in (("all", "All adults"), ("workers", "Earners")):
+    for sp, splab in (("years_noage", "years, no age terms"), ("years_age", "years, age bands")):
+        v = PVC[samp][sp]
+        rows.append([f"{lab}, {splab.replace('no age terms', 'no age').replace('age bands', 'age bands')}", f"{fmt(v['b_female']['point'], 2, True)} ({fmt(v['b_female']['se'], 2)})", f"{fmt(v['benchmark']['point'], 2, True)} ({fmt(v['benchmark']['se'], 2)})",
+                     f"{fmt(v['difference']['point'], 2, True)} ({fmt(v['difference']['se'], 2)})", fmt(v['difference']['z'], 2), f"{fmt(v['delta_proxy_units']['point'], 3, True)} ({fmt(v['delta_proxy_units']['se'])})", n_fmt(v["n"])])
+write("S13B", "Specification & Female coef. (SE) & Benchmark (SE) & Difference (SE) & $z$ & $\\delta$, years (SE) & $n$", rows, "@{}lllllll@{}", colsep="2pt")
+rows = []
+arm = MC["arms"]["composite"]; NUM["S13_composite"] = {"delta": arm["delta_years"], "kappa_all": KC["composite"]["overall"]["kappa"], "kappa_all_se": KC["composite"]["overall"]["se"],
+                                                       "kappa_workers": KCW["composite"]["overall"]["kappa"], "kappa_workers_se": KCW["composite"]["overall"]["se"],
+                                                       "validity": {s: {k: PVC[s]["years_noage"][k] for k in ("b_female", "benchmark", "difference", "delta_proxy_units", "kappa_within")} for s in ("all", "workers")},
+                                                       "delta_age_bands": {s: PVC[s]["years_age"]["delta_proxy_units"]["point"] for s in ("all", "workers")}, "arm": {}}
+CA = load_dir("grid_meanerror_composite")
+for cs in ("premarket", "extended"):
+    cv = arm["covsets"][cs]; p = cv["pooled"]["U_mk"]
+    kap_comp = next(iter(CA.values()))["spec_results"][0]["kappa_point"]
+    at_lit = [spec(CA[m], "acs50k", cs)["eiv_unexplained_at"]["0.186729"] for m in markets]
+    rows.append([f"{cs.capitalize()}, composite {kap_comp:.3f}", fmt(p["mean"]), f"{fmt(p['ci_lo'])} to {fmt(p['ci_hi'])}", f"{fmt(p['min'])} to {fmt(p['max'])}", str(cv["U_m_anchor_negative"]), str(cv["U_m_floor_negative"]), str(cv["reliability_correction_deepens_after_meanerror"])])
+    rows.append([f"{cs.capitalize()}, literacy 0.187", fmt(float(np.mean(at_lit))), "", f"{fmt(min(at_lit))} to {fmt(max(at_lit))}", str(sum(1 for v in at_lit if v < 0)), "", ""])
+    NUM["S13_composite"]["arm"][cs] = {"kappa": kap_comp, "mean": p["mean"], "ci": [p["ci_lo"], p["ci_hi"]], "min": p["min"], "max": p["max"], "neg_anchor": cv["U_m_anchor_negative"], "neg_floor": cv["U_m_floor_negative"],
+                                       "at_lit_mean": float(np.mean(at_lit)), "at_lit_neg": int(sum(1 for v in at_lit if v < 0)), "deepens": cv["reliability_correction_deepens_after_meanerror"]}
+write("S13C", "Covariate set, anchor & Pooled mean & 95 per cent interval & Market range & Neg. anchor & Neg. floor & Deepens", rows, "@{}lllllll@{}", colsep="2pt")
+
+# ---------------------------------------------------------------- S14 attainment indicators (R18)
+DS = json.load(open(os.path.join(R, "dummies_summary.json")))
+rows = []
+for q, lab in (("raw", "Raw gap"), ("explained", "Explained, indicator coding"), ("unexplained", "Unexplained, indicator coding"), ("linear_unexplained", "Unexplained, linear coding (main grid)"), ("difference_from_linear", "Difference, indicator minus linear")):
+    v = DS["pooled"][q]; b = v["state_block_bootstrap"]
+    rows.append([lab, fmt(v["mean"], 4), f"{fmt(b['ci_lo'], 4)} to {fmt(b['ci_hi'], 4)}", f"{fmt(v['min'], 4)} to {fmt(v['max'], 4)}"])
+write("S14", "Quantity & Pooled mean & State-block 95 per cent & Market range", rows, "@{}llll@{}")
+lv = [m["n_schl_levels_observed"] for m in DS["markets"].values()]
+NUM["S14_dummies"] = {"pooled": {q: {"mean": DS["pooled"][q]["mean"], "ci": [DS["pooled"][q]["state_block_bootstrap"]["ci_lo"], DS["pooled"][q]["state_block_bootstrap"]["ci_hi"]], "min": DS["pooled"][q]["min"], "max": DS["pooled"][q]["max"]} for q in DS["pooled"]},
+                      "counts": DS["counts"], "levels_min": min(lv), "levels_max": max(lv)}
+
+# ---------------------------------------------------------------- S15 group-specific reference (R17)
+GS = json.load(open(os.path.join(R, "groupref_summary.json")))
+GR = load_dir("grid_groupref")
+ao = next(iter(GR.values()))["arm_options"]
+rows = []
+order = [("raw", "Raw gap"), ("pooled_ref_uncorrected", "Pooled reference, uncorrected"), ("pooled_ref_corrected", "Pooled reference, corrected at 0.187"),
+         ("male_ref_uncorrected", "Male ref., uncorrected"), ("male_ref_corrected_common", "Male ref., corrected, common anchor"), ("male_ref_corrected_sexspecific", "Male ref., corrected, sex-specific"),
+         ("female_ref_uncorrected", "Female ref., uncorrected"), ("female_ref_corrected_common", "Female ref., corrected, common anchor"), ("female_ref_corrected_sexspecific", "Female ref., corrected, sex-specific"),
+         ("male_ref_sexspecific_minus_common", "Male ref.: sex-specific minus common"), ("female_ref_sexspecific_minus_common", "Female ref.: sex-specific minus common")]
+for q, lab in order:
+    v = GS["pooled"][q]; b = v["state_block_bootstrap"]
+    cnt = GS["counts"].get(q + "_negative"); pos = GS["counts"].get(q + "_positive")
+    last = f"{cnt} negative" if cnt is not None else (f"{pos} positive" if pos is not None else "")
+    rows.append([lab, fmt(v["mean"], 4, plus=q.endswith("common")), f"{fmt(b['ci_lo'], 4, plus=q.endswith('common'))} to {fmt(b['ci_hi'], 4, plus=q.endswith('common'))}", f"{fmt(v['min'], 4, plus=q.endswith('common'))} to {fmt(v['max'], 4, plus=q.endswith('common'))}", last])
+write("S15", "Quantity & Pooled mean & State-block 95 per cent & Market range & Markets", rows, "@{}lllll@{}", colsep="2.5pt")
+NUM["S15_groupref"] = {"pooled": {q: {"mean": GS["pooled"][q]["mean"], "ci": [GS["pooled"][q]["state_block_bootstrap"]["ci_lo"], GS["pooled"][q]["state_block_bootstrap"]["ci_hi"]], "min": GS["pooled"][q]["min"], "max": GS["pooled"][q]["max"]} for q in GS["pooled"]},
+                       "counts": GS["counts"], "kappa_common": ao["kappa_common"], "kappa_men": ao["kappa_men"], "kappa_women": ao["kappa_women"],
+                       "max_abs_move": max(abs(GS["pooled"]["male_ref_sexspecific_minus_common"]["min"]), abs(GS["pooled"]["male_ref_sexspecific_minus_common"]["max"]),
+                                          abs(GS["pooled"]["female_ref_sexspecific_minus_common"]["min"]), abs(GS["pooled"]["female_ref_sexspecific_minus_common"]["max"]))}
+# consistency: the pooled-reference values stored with the group-reference arm equal the main grid's
+assert all(abs(GR[m]["unexplained"]["pooled_ref_uncorrected"] - spec(G[m], "acs50k", "premarket", "logistic")["decomp_unexplained"]) < 1e-9 for m in markets)
+assert all(abs(GR[m]["unexplained"]["pooled_ref_corrected"] - spec(G[m], "acs50k", "premarket", "logistic")["eiv_unexplained_at_kappa"]) < 1e-9 for m in markets)
 
 json.dump(NUM, open(os.path.join(OUT, "si_numbers.json"), "w"), indent=1, default=float)
 print("wrote", TAB, "and si_numbers.json")
