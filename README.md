@@ -160,7 +160,7 @@ The code is under the MIT licence (`LICENSE`). The run logs under `results/` are
 
 ## Citation
 
-Mohammad, S. A. A., Ye, X., Chen, Q. and AL-Bakhrani, A. A. (2026). Code and run logs for: Correcting a merit proxy for measurement error does not close the sex gap in income audits (version 1.0.0). Zenodo. https://doi.org/10.5281/zenodo.22986776
+Mohammad, S. A. A., Ye, X., Chen, Q. and AL-Bakhrani, A. A. (2026). Code and run logs for: Correcting a merit proxy for measurement error does not close the sex gap in income audits (version 1.1.0). Zenodo. https://doi.org/10.5281/zenodo.23034342
 
 The concept DOI https://doi.org/10.5281/zenodo.22986775 always resolves to the latest version.
 
