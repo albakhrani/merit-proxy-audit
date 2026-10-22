@@ -1,4 +1,4 @@
-# Correcting a merit proxy for measurement error does not close the sex gap in income audits
+# Correcting schooling for measurement error does not close the unexplained income gap between women and men
 
 Code and run logs for the manuscript of that title, submitted to Scientific Reports.
 
